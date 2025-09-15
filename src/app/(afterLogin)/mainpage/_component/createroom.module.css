@@ -1,0 +1,489 @@
+.createRoom {
+  flex: 1;
+  padding: 5rem 2rem 2rem 2rem;
+  display: flex;
+  color: white;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 800px;
+  margin: 0 auto;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* 스크롤바 숨김 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+/* 스크롤바 숨김 - 웹킷 브라우저용 */
+.createRoom::-webkit-scrollbar {
+  display: none;
+}
+
+.title {
+  color: #f7f7f7;
+  font-size: 28px;
+  font-weight: bold;
+  margin: 0 0 0.5rem 0;
+  padding-bottom: 1rem;
+}
+
+/* 피그마 디자인에 맞는 파란색 제목 */
+.titleUpdated {
+  color: #f7f7f7;
+  font-size: 28px;
+  font-weight: bold;
+  margin: 0 0 0.5rem 0;
+  padding-bottom: 1rem;
+}
+
+.roomTitle {
+  background-color: #121216;
+  border: 1px solid #292929;
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  justify-content: center;
+  gap: 8px;
+}
+
+.title_title {
+  color: #6096ff;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+/* 피그마 디자인에 맞는 입력 필드 */
+.roomTitleInputUpdated {
+  width: 50%;
+  height: 40px;
+  background-color: #252530;
+  border: 1px solid #292929;
+  border-radius: 8px;
+  padding: 0 16px;
+  font-size: 14px;
+  color: #f7f7f7;
+  outline: none;
+  transition: all 0.3s ease;
+  margin-top: 8px;
+}
+
+.roomTitleInputUpdated:focus {
+  border-color: #6096ff;
+  background-color: #333;
+}
+
+.roomTitleInputUpdated::placeholder {
+  color: #888;
+}
+
+.count_box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.count_btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #666;
+  background-color: transparent;
+  color: #f7f7f7;
+  border-radius: 8px;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.count_btn:hover {
+  background-color: #333;
+  border-color: #999;
+}
+
+.count_btn:active {
+  transform: scale(0.95);
+}
+
+.count_display {
+  min-width: 40px;
+  font-size: 24px;
+  font-weight: bold;
+  color: #f7f7f7;
+  text-align: center;
+}
+
+/* 피그마 디자인에 맞는 팀원 수 카운터 */
+.countBoxUpdated {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.countBtnUpdated {
+  width: 40px;
+  height: 40px;
+  border: 2px solid #555;
+  background-color: #2a2a2a;
+  color: #f7f7f7;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.countBtnUpdated:hover {
+  background-color: #3a3a3a;
+  border-color: #777;
+}
+
+.countDisplayUpdated {
+  min-width: 20px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 20px;
+  font-weight: bold;
+  color: #f7f7f7;
+}
+
+.roomTypeSection {
+  background-color: #121216;
+  border: 1px solid #292929;
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: start;
+}
+
+/* 피그마 디자인에 맞는 섹션 제목 */
+.sectionTitleUpdated {
+  color: #6096ff;
+  font-size: 20px;
+  font-weight: bold;
+  margin: 0 0 1rem 0;
+}
+
+.roomTypeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  width: 100%;
+}
+
+.roomCard {
+  background-color: #121216;
+  border: 1px solid #292929;
+  border-radius: 12px;
+  padding: 24px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+}
+
+.roomCard:hover {
+  border-color: #555;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.roomCard.selected {
+  background-color: #252530;
+  border: 1px solid #292929;
+  box-shadow: 0 0 20px rgba(76, 175, 80, 0.2);
+}
+
+.roomCardTitle {
+  font-size: 20px;
+  font-weight: bold;
+  color: #f7f7f7;
+  margin: 0 0 12px 0;
+}
+
+/* 피그마 디자인에 맞는 룸 카드 제목 */
+.roomCardTitleUpdated {
+  font-size: 20px;
+  font-weight: bold;
+  color: #f7f7f7;
+  margin: 0 0 8px 0;
+}
+
+.roomCardPrice {
+  font-size: 24px;
+  font-weight: bold;
+  color: #f7f7f7;
+  margin: 0 0 12px 0;
+}
+
+/* 피그마 디자인에 맞는 가격 스타일 */
+.roomCardPriceUpdated {
+  font-size: 18px;
+  font-weight: 600;
+  color: #f7f7f7;
+  margin: 0 0 8px 0;
+}
+
+.roomCardDescription {
+  font-size: 14px;
+  color: #999;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.roomCard.selected .roomCardDescription {
+  color: #f7f7f7;
+}
+
+/* 피그마 디자인에 맞는 설명 스타일 */
+.roomCardDescriptionUpdated {
+  font-size: 13px;
+  color: #aaa;
+  margin: 0;
+  line-height: 1.3;
+  font-weight: 400;
+}
+
+.roomCard.selected .roomCardDescriptionUpdated {
+  color: #e0e0e0;
+}
+
+/* 피그마 디자인에 맞는 룸 카드 레이아웃 */
+.roomCardContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.roomCardLeft {
+  flex: 1;
+}
+
+.roomCardIcon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 12px;
+  overflow: hidden;
+}
+
+/* 메가커피 아이콘 배경 */
+.megacoffeeIcon {
+  background-color: #ffc107;
+}
+
+/* 스타벅스 아이콘 배경 */
+.starbucksIcon {
+  background-color: #00704a;
+}
+
+.noticeSection {
+  margin-top: 0;
+}
+
+.noticeBox {
+  background-color: #2a2a2a;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  border-left: 4px solid yellow;
+}
+
+.noticeIcon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.noticeContent {
+  flex: 1;
+  text-align: left;
+}
+
+.noticeTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #f7f7f7;
+  margin: 0 0 8px 0;
+}
+
+.noticeSubtext {
+  font-size: 14px;
+  color: #999;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.inviteSection {
+  background-color: #121216;
+  border: 1px solid #292929;
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: start;
+}
+
+/* 피그마 디자인에 맞는 섹션 제목 */
+.inviteSectionTitle {
+  color: #6096ff;
+  font-size: 20px;
+  font-weight: bold;
+  margin: 0 0 1rem 0;
+}
+
+.inviteInputSection {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+}
+
+.inviteInputUpdated {
+  width: 50%;
+  height: 40px;
+  background-color: #252530;
+  border: 1px solid #292929;
+  border-radius: 8px;
+  padding: 0 16px;
+  font-size: 14px;
+  color: #f7f7f7;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.inviteInputUpdated:focus {
+  border-color: #6096ff;
+  background-color: #333;
+}
+
+.inviteInputUpdated::placeholder {
+  color: #888;
+}
+
+.inviteButton {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100px;
+  height: 40px;
+  border: none;
+  background: linear-gradient(135deg, #6096ff 0%, #4a7fff 100%);
+  color: white;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+.buttonSection {
+  padding: 1.25rem;
+  display: flex;
+  gap: 12px;
+  margin: 0;
+  justify-content: flex-start;
+}
+
+/* 피그마 디자인에 맞는 버튼 스타일 */
+.createBtnUpdated {
+  padding: 16px 32px;
+  border: none;
+  background: linear-gradient(135deg, #6096ff 0%, #4a7fff 100%);
+  color: white;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(96, 150, 255, 0.3);
+  min-width: 200px;
+}
+
+.createBtnUpdated:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(96, 150, 255, 0.4);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .container {
+    flex-direction: column;
+    overflow: visible;
+  }
+
+  .createRoom {
+    height: auto;
+    overflow-y: visible;
+    padding: 1rem;
+  }
+
+  .title,
+  .titleUpdated {
+    position: static;
+    padding: 1rem 0;
+  }
+
+  .roomTitle_input,
+  .roomTitleInputUpdated {
+    width: 100%;
+  }
+
+  .roomTypeGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .buttonSection {
+    flex-direction: column;
+    margin-bottom: 2rem;
+  }
+
+  .cancelBtn,
+  .createBtn,
+  .cancelBtnUpdated,
+  .createBtnUpdated {
+    width: 100%;
+  }
+
+  .countBoxUpdated {
+    justify-content: center;
+  }
+
+  .roomCardContent {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .roomCardIcon {
+    margin-left: 0;
+    align-self: flex-end;
+  }
+
+  .eliteRoomCard .roomCardTitleUpdated,
+  .eliteRoomCard .roomCardPriceUpdated {
+    margin-left: 35px; /* 모바일에서도 크라운 공간 유지 */
+  }
+}

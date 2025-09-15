@@ -1,0 +1,790 @@
+.mypage {
+  flex: 1;
+  padding: 5rem 2rem 2rem 2rem;
+  display: flex;
+  color: white;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 800px;
+  margin: 0 auto;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* 스크롤바 숨김 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+/* 스크롤바 숨김 - 웹킷 브라우저용 */
+.mypage::-webkit-scrollbar {
+  display: none;
+}
+
+.title {
+  color: #f7f7f7;
+  font-size: 28px;
+  font-weight: bold;
+  margin: 0 0 0.5rem 0;
+  padding-bottom: 1rem;
+}
+
+/* 프로필 섹션 */
+.profileSection {
+  margin-bottom: 1rem;
+}
+
+.profileCard {
+  background-color: #121216;
+  border: 1px solid #292929;
+  border-radius: 16px;
+  padding: 1.5rem;
+  max-width: 100%;
+}
+
+.profileHeader {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+}
+
+.avatarContainer {
+  position: relative;
+}
+
+.avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #333;
+  background-color: #333;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatarEdit {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 32px;
+  height: 32px;
+  background: #4285f4;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  border: 2px solid #1a1a1a;
+}
+
+.profileInfo {
+  flex: 1;
+}
+
+.nicknameSection {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.nickname {
+  color: #f7f7f7;
+  font-size: 24px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.nicknameInput {
+  background-color: #252530;
+  border: 1px solid #292929;
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #f7f7f7;
+  font-size: 20px;
+  font-weight: bold;
+  outline: none;
+  max-width: 200px;
+}
+
+.nicknameInput:focus {
+  border-color: #4285f4;
+}
+
+.editBtn {
+  padding: 6px 16px;
+  background: transparent;
+  border: 2px solid #666;
+  color: #f7f7f7;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.editBtn:hover {
+  border-color: #4285f4;
+  color: #4285f4;
+}
+
+.userMeta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.email {
+  color: #999;
+  font-size: 16px;
+}
+
+.verifiedBadge {
+  background: #4caf50;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.joinDate {
+  color: #777;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* 공통 카드 스타일 */
+.sectionCard {
+  background-color: #121216;
+  border: 1px solid #292929;
+  border-radius: 12px;
+  padding: 1.25rem;
+  max-width: 100%;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.sectionTitle {
+  color: #f7f7f7;
+  font-size: 20px;
+  font-weight: bold;
+  margin: 0;
+}
+
+/* 기프티콘 관리 섹션 */
+.gifticonSection {
+  margin-bottom: 1rem;
+}
+
+.gifticonSummary {
+  display: flex;
+  align-items: center;
+}
+
+.gifticonCount {
+  color: #999;
+  font-size: 14px;
+}
+
+/* 탭 메뉴 */
+.tabMenu {
+  display: flex;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  padding: 4px;
+  margin-bottom: 1.5rem;
+}
+
+.tabBtn {
+  flex: 1;
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  color: #999;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.tabBtn.active {
+  background: #4285f4;
+  color: white;
+}
+
+.tabBtn:hover:not(.active) {
+  color: #f7f7f7;
+}
+
+/* 기프티콘 목록 */
+.gifticonList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.gifticonCard {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background-color: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 1rem;
+  transition: all 0.3s ease;
+}
+
+.gifticonCard:hover {
+  border-color: #4285f4;
+  transform: translateY(-1px);
+}
+
+.gifticonCard.used {
+  opacity: 0.6;
+  background-color: #161616;
+}
+
+.gifticonIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background-color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gifticonIcon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.gifticonInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.gifticonHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.gifticonName {
+  color: #f7f7f7;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.gifticonStatus {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gifticonStatus.unused {
+  background: #4caf50;
+  color: white;
+}
+
+.gifticonStatus.used {
+  background: #666;
+  color: #ccc;
+}
+
+.gifticonDescription {
+  color: #999;
+  font-size: 14px;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.4;
+}
+
+.gifticonMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.gifticonDate,
+.gifticonExpiry {
+  color: #777;
+  font-size: 12px;
+}
+
+.gifticonBarcode {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 6px 12px;
+  background-color: #252530;
+  border-radius: 6px;
+  margin-top: 0.5rem;
+}
+
+.barcodeLabel {
+  color: #999;
+  font-size: 12px;
+}
+
+.barcodeNumber {
+  color: #f7f7f7;
+  font-size: 13px;
+  font-family: "Courier New", monospace;
+  letter-spacing: 1px;
+}
+
+.gifticonActions {
+  flex-shrink: 0;
+}
+
+.useBtn {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #4285f4 0%, #1976d2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.useBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+}
+
+/* 빈 상태 */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 1rem;
+  text-align: center;
+}
+
+.emptyIcon {
+  font-size: 48px;
+  margin-bottom: 1rem;
+}
+
+.emptyMessage {
+  color: #999;
+  font-size: 16px;
+  margin: 0;
+}
+
+/* 포인트 섹션 (기존 - 사용하지 않지만 유지) */
+.pointDisplay {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.pointAmount {
+  color: #4285f4;
+  font-size: 36px;
+  font-weight: bold;
+}
+
+.pointUnit {
+  color: #999;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.pointDescription {
+  color: #999;
+  font-size: 14px;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.withdrawBtn {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #4285f4 0%, #1976d2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.withdrawBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+}
+
+/* 계정 설정 섹션 */
+.settingItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid #333;
+}
+
+.settingItem:last-child {
+  border-bottom: none;
+}
+
+.settingInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.settingLabel {
+  color: #f7f7f7;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.settingValue {
+  color: #999;
+  font-size: 14px;
+}
+
+.settingValue.verified {
+  color: #4caf50;
+}
+
+.settingValue.unverified {
+  color: #ff6b6b;
+}
+
+.settingBtn {
+  padding: 6px 12px;
+  background: transparent;
+  border: 2px solid #666;
+  color: #f7f7f7;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.settingBtn:hover {
+  border-color: #4285f4;
+  color: #4285f4;
+}
+
+/* 이메일 변경 폼 */
+.emailChangeForm {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.emailInput {
+  background-color: #252530;
+  border: 1px solid #292929;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #f7f7f7;
+  font-size: 14px;
+  outline: none;
+}
+
+.emailInput:focus {
+  border-color: #4285f4;
+}
+
+.emailVerifyBtn {
+  padding: 8px 16px;
+  background: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.emailVerifyBtn:disabled {
+  background: #666;
+  cursor: not-allowed;
+}
+
+.verificationSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.verificationInput {
+  background-color: #2a2a2a;
+  border: 2px solid #444;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #f7f7f7;
+  font-size: 14px;
+  outline: none;
+}
+
+.verificationInput:focus {
+  border-color: #4285f4;
+}
+
+.testCode {
+  color: #888;
+  font-size: 12px;
+  margin: 0;
+}
+
+.emailActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* 비밀번호 변경 폼 */
+.passwordChangeForm {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.passwordInput {
+  background-color: #252530;
+  border: 1px solid #292929;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #f7f7f7;
+  font-size: 14px;
+  outline: none;
+}
+
+.passwordInput:focus {
+  border-color: #4285f4;
+}
+
+.passwordActions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.cancelBtn {
+  padding: 8px 16px;
+  background: transparent;
+  border: 2px solid #666;
+  color: #f7f7f7;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.confirmBtn {
+  padding: 8px 16px;
+  background: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* 이용 안내 섹션 */
+.infoList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.infoItem {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.infoIcon {
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-top: 0.25rem;
+}
+
+.infoContent {
+  flex: 1;
+}
+
+.infoTitle {
+  color: #f7f7f7;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 0.25rem 0;
+}
+
+.infoDescription {
+  color: #999;
+  font-size: 14px;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* 위험 구역 */
+.dangerSection {
+  padding-top: 1rem;
+}
+
+.dangerTitle {
+  color: #f7f7f7;
+  font-size: 18px;
+  font-weight: bold;
+  margin: 0 0 1rem 0;
+}
+
+.logoutBtn {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  border: 2px solid #4285f4;
+  color: #4285f4;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.logoutBtn:hover {
+  background: #4285f4;
+  color: white;
+}
+
+.deleteAccountBtn {
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  border: 2px solid #1976d2;
+  color: #1976d2;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.deleteAccountBtn:hover {
+  background: #1976d2;
+  color: white;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .mypage {
+    padding: 1rem;
+    gap: 1.5rem;
+  }
+
+  .profileCard {
+    padding: 1.5rem;
+  }
+
+  .profileHeader {
+    flex-direction: column;
+    text-align: center;
+    gap: 1.5rem;
+  }
+
+  .nicknameSection {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .userMeta {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .pointAmount {
+    font-size: 28px;
+  }
+
+  .settingItem {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .passwordActions {
+    justify-content: stretch;
+  }
+
+  .cancelBtn,
+  .confirmBtn {
+    flex: 1;
+  }
+
+  /* 기프티콘 카드 모바일 반응형 */
+  .gifticonCard {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .gifticonHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .gifticonMeta {
+    flex-direction: row;
+    gap: 1rem;
+  }
+
+  .gifticonBarcode {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .gifticonActions {
+    align-self: stretch;
+  }
+
+  .useBtn {
+    width: 100%;
+  }
+
+  .tabMenu {
+    flex-direction: column;
+  }
+
+  .tabBtn {
+    padding: 12px 16px;
+  }
+}

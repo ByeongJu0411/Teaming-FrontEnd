@@ -1,0 +1,12 @@
+.container {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  min-height: 100vh;
+  text-align: center;
+  z-index: 1;
+  background-color: black;
+  overflow: hidden; /* 전체 컨테이너 스크롤 방지 */
+  padding-left: 3rem; /* 좌측 패딩 복원 */
+}

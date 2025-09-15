@@ -1,0 +1,212 @@
+/* Container - 상단 컴포넌트와 자연스럽게 이어지도록 */
+.bentoContainer {
+  width: 100%;
+  min-height: 100vh;
+  background: #000000;
+  position: relative;
+  z-index: 1;
+  display: flex;
+}
+
+/* Bento Grid - 피그마 레이아웃과 동일하게 */
+.bentoGrid {
+  margin: 0 auto;
+  padding: 0 2rem;
+  display: flex;
+  gap: 1.5rem;
+}
+
+/* 왼쪽 컬럼 - 세로로 두 개 카드 */
+.leftColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  flex: 0 0 450px;
+}
+
+/* 오른쪽 컬럼 - 큰 카드 하나 */
+.rightColumn {
+  flex: 0 0 350px;
+  display: flex;
+}
+
+/* Card Base Styles */
+.card {
+  position: relative;
+  padding: 2rem;
+  border-radius: 24px;
+  border: 1px solid #838383;
+  background: black;
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  --glow-x: 50%;
+  --glow-y: 50%;
+  --glow-intensity: 0;
+  --glow-radius: 200px;
+}
+
+/* 작은 카드 (100팀, 999명) */
+.cardSmall {
+  height: 270px;
+  width: 560px;
+}
+
+/* 큰 카드 (2팀) */
+.cardLarge {
+  height: 560px;
+  min-height: 560px; /* 두 개의 작은 카드 + gap과 동일 */
+  width: 560px;
+}
+
+/* Card hover effects */
+.card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3), 0 0 60px rgba(59, 130, 246, 0.1), inset 0 0 60px rgba(59, 130, 246, 0.05);
+}
+
+/* Card Content - 좌측 하단 정렬을 위한 수정 */
+.cardContent {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+  z-index: 2;
+  justify-content: flex-end; /* 콘텐츠를 하단으로 밀기 */
+  align-items: flex-start; /* 콘텐츠를 좌측 정렬 */
+}
+
+/* Card Title - 큰 숫자 */
+.cardTitle {
+  font-size: 3.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 1rem 0;
+  letter-spacing: -2px;
+  line-height: 1;
+}
+
+/* Card Subtitle - 메인 설명 */
+.cardSubtitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.5px;
+}
+
+/* Card Description - 부가 설명 */
+.cardDescription {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.5;
+  margin-top: 0; /* margin-top: auto 제거 */
+}
+
+/* Particle effects */
+.particleContainer {
+  position: relative;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* Glow effect on hover */
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    600px circle at var(--glow-x) var(--glow-y),
+    rgba(59, 130, 246, calc(var(--glow-intensity) * 0.15)),
+    transparent 40%
+  );
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 1;
+}
+
+/* Border glow effect */
+.card::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 24px;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(147, 197, 253, 0.1), rgba(59, 130, 246, 0.3));
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.card:hover::after {
+  opacity: 1;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .bentoContainer {
+    padding: 2rem 0;
+    margin-top: -50px;
+  }
+
+  .bentoGrid {
+    flex-direction: column;
+    padding: 0 1rem;
+    align-items: center;
+  }
+
+  .leftColumn,
+  .rightColumn {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .cardSmall,
+  .cardLarge {
+    height: 180px;
+    min-height: unset;
+  }
+
+  .cardTitle {
+    font-size: 2.5rem;
+  }
+
+  .cardSubtitle {
+    font-size: 1.1rem;
+  }
+
+  .cardDescription {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .cardTitle {
+    font-size: 2rem;
+  }
+
+  .cardSubtitle {
+    font-size: 1rem;
+  }
+
+  .cardDescription {
+    font-size: 0.8rem;
+  }
+}

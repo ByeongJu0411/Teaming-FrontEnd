@@ -1,0 +1,7 @@
+.container {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  width: 100dvw;
+  background-color: black;
+}

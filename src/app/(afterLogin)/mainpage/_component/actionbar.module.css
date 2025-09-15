@@ -1,0 +1,142 @@
+.actionBar {
+  width: 280px;
+  height: 100vh;
+  padding-top: 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: 1rem;
+}
+
+.header {
+  color: #f7f7f7;
+  font-size: 24px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.navBar {
+  width: 100%;
+  height: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  justify-content: center;
+}
+
+.userInfo {
+  width: 100%;
+  height: 50%;
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+}
+
+.userImg {
+  height: 100%; /* 부모(userInfo)의 전체 높이 */
+  aspect-ratio: 1;
+  border-radius: 50%; /* 원형 프로필 이미지를 원한다면 */
+  object-fit: cover; /* 이미지가 영역을 벗어나지 않도록 */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: #f7f7f7;
+}
+
+.userName {
+  display: flex;
+  align-items: center;
+  color: #f7f7f7;
+  font-weight: 500;
+}
+
+.navItem {
+  width: 100%;
+  height: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #838383;
+}
+
+.Item {
+  cursor: pointer;
+  transition: color 0.2s ease; /* 부드러운 색상 변화를 위한 트랜지션 */
+}
+
+/* 호버 상태 */
+.Item:hover {
+  color: #f7f7f7;
+}
+
+/* 클릭(활성) 상태 */
+.Item:active {
+  color: #f7f7f7;
+}
+
+/* 선택된 상태를 유지하고 싶다면 클래스를 추가로 만들어서 사용 */
+.Item.selected {
+  color: #f7f7f7;
+}
+
+.roomList {
+  width: 100%;
+  flex: 1;
+  background-color: #121216;
+  border: 1px solid #292929;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  color: #838383;
+}
+
+.roomItem {
+  width: 100%;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  border-radius: 0 12px;
+}
+
+.roomImg {
+  width: 58px;
+  height: 58px;
+  border-radius: 50px;
+  background-color: #838383;
+}
+
+.roomInfo {
+  flex: 1;
+  display: flex;
+  padding-left: 1rem;
+  flex-direction: column;
+  justify-content: center;
+  align-items: start;
+  gap: 2px;
+}
+
+.roomName {
+  color: #f7f7f7;
+  font-size: 18px;
+}
+
+.lastChat {
+  color: #838383;
+  font-size: 14px;
+}
+
+/* 선택된 roomItem 스타일 */
+.selectedRoom {
+  background-color: #e3e3e3 !important;
+}
+
+/* 선택된 roomItem의 roomName 색상 */
+.selectedRoom .roomName {
+  color: #000000 !important;
+}
+
+/* roomItem에 커서 포인터 추가 */
+.roomItem {
+  cursor: pointer;
+}

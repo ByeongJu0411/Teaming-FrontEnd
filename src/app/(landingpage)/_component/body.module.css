@@ -1,0 +1,353 @@
+/* 메인 컨테이너 */
+.container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100vh;
+  text-align: center;
+  z-index: 1;
+  padding-top: 80px;
+}
+
+/* 배경 컨테이너 */
+.backgroundContainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  background: #000000;
+  overflow: hidden;
+  z-index: 0;
+}
+
+/* 메인 파란색 웨이브 - 더 선명하게 */
+.blueWave {
+  position: absolute;
+  top: -60%;
+  left: -30%;
+  width: 180%;
+  height: 100%;
+  background: radial-gradient(
+    ellipse 800px 400px at 50% 50%,
+    rgba(59, 130, 246, 0.8) 0%,
+    rgba(37, 99, 235, 0.6) 15%,
+    rgba(29, 78, 216, 0.4) 30%,
+    rgba(30, 64, 175, 0.2) 50%,
+    transparent 70%
+  );
+  filter: blur(40px);
+  transform: rotate(-25deg);
+  animation: waveMotion 8s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+
+/* 두 번째 웨이브 - 보조 효과 */
+.blueWave2 {
+  position: absolute;
+  top: -40%;
+  right: -40%;
+  width: 160%;
+  height: 120%;
+  background: radial-gradient(
+    ellipse 900px 500px at 60% 40%,
+    rgba(96, 165, 250, 0.7) 0%,
+    rgba(59, 130, 246, 0.5) 20%,
+    rgba(37, 99, 235, 0.3) 40%,
+    transparent 65%
+  );
+  filter: blur(60px);
+  transform: rotate(15deg);
+  animation: waveMotion2 10s ease-in-out infinite reverse;
+  mix-blend-mode: screen;
+}
+
+/* 세 번째 웨이브 - 깊이감 추가 */
+.blueWave3 {
+  position: absolute;
+  top: -20%;
+  left: 10%;
+  width: 140%;
+  height: 100%;
+  background: radial-gradient(
+    ellipse 1000px 400px at 40% 60%,
+    rgba(147, 197, 253, 0.6) 0%,
+    rgba(96, 165, 250, 0.4) 25%,
+    rgba(59, 130, 246, 0.2) 50%,
+    transparent 70%
+  );
+  filter: blur(80px);
+  transform: rotate(-10deg);
+  animation: waveMotion3 12s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+
+/* 빛나는 오브 효과 1 */
+.glowOrb {
+  position: absolute;
+  top: 10%;
+  left: 60%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(
+    circle at center,
+    rgba(59, 130, 246, 0.9) 0%,
+    rgba(37, 99, 235, 0.4) 20%,
+    rgba(29, 78, 216, 0.2) 40%,
+    transparent 60%
+  );
+  filter: blur(100px);
+  animation: orbFloat 15s ease-in-out infinite;
+  opacity: 0.6;
+}
+
+/* 빛나는 오브 효과 2 */
+.glowOrb2 {
+  position: absolute;
+  bottom: 20%;
+  right: 50%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(
+    circle at center,
+    rgba(96, 165, 250, 0.8) 0%,
+    rgba(59, 130, 246, 0.3) 30%,
+    transparent 60%
+  );
+  filter: blur(90px);
+  animation: orbFloat2 18s ease-in-out infinite reverse;
+  opacity: 0.5;
+}
+
+/* 컨텐츠 스타일 */
+.content {
+  color: white;
+  z-index: 10;
+  position: relative;
+  padding: 2rem;
+}
+
+/* 메인 타이틀 */
+.mainTitle {
+  font-size: 5rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #ffffff;
+  letter-spacing: -2px;
+}
+
+.mainTitle2 {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+  margin-bottom: 2rem;
+  color: #ffffff;
+  letter-spacing: -2px;
+}
+/* 서브타이틀 */
+.subtitle {
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 0.3rem;
+  font-weight: 400;
+  letter-spacing: -0.5px;
+}
+
+/* 버튼 그룹 */
+.buttonGroup {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 3rem;
+}
+
+/* 버튼 공통 스타일 */
+.loginButton,
+.joinButton {
+  padding: 0.8rem 2.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  letter-spacing: -0.3px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 로그인 버튼 */
+.loginButton {
+  background: white;
+  color: black;
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+}
+
+.loginButton:hover {
+  transform: translateY(-2px);
+}
+
+.loginButton::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.loginButton:hover::before {
+  left: 100%;
+}
+
+/* 회원가입 버튼 */
+.joinButton {
+  background: #0f0e0e;
+  color: #838383;
+  border: 1px solid #838383;
+  backdrop-filter: blur(10px);
+}
+
+.joinButton:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+/* 복잡한 웨이브 애니메이션 */
+@keyframes waveMotion {
+  0%,
+  100% {
+    transform: rotate(-25deg) translateX(0) translateY(0) scale(1);
+  }
+  25% {
+    transform: rotate(-30deg) translateX(-50px) translateY(30px) scale(1.1);
+  }
+  50% {
+    transform: rotate(-20deg) translateX(50px) translateY(-20px) scale(0.95);
+  }
+  75% {
+    transform: rotate(-28deg) translateX(-30px) translateY(10px) scale(1.05);
+  }
+}
+
+@keyframes waveMotion2 {
+  0%,
+  100% {
+    transform: rotate(15deg) translateX(0) translateY(0) scale(1);
+  }
+  33% {
+    transform: rotate(20deg) translateX(40px) translateY(-40px) scale(1.15);
+  }
+  66% {
+    transform: rotate(10deg) translateX(-60px) translateY(30px) scale(0.9);
+  }
+}
+
+@keyframes waveMotion3 {
+  0%,
+  100% {
+    transform: rotate(-10deg) translateX(0) translateY(0);
+  }
+  20% {
+    transform: rotate(-5deg) translateX(30px) translateY(-30px);
+  }
+  40% {
+    transform: rotate(-15deg) translateX(-40px) translateY(20px);
+  }
+  60% {
+    transform: rotate(-8deg) translateX(20px) translateY(-10px);
+  }
+  80% {
+    transform: rotate(-12deg) translateX(-20px) translateY(15px);
+  }
+}
+
+@keyframes orbFloat {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(-100px, 50px) scale(1.2);
+  }
+  50% {
+    transform: translate(80px, -80px) scale(0.8);
+  }
+  75% {
+    transform: translate(-50px, -30px) scale(1.1);
+  }
+}
+
+@keyframes orbFloat2 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(70px, -60px) scale(1.3);
+  }
+  66% {
+    transform: translate(-90px, 40px) scale(0.7);
+  }
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .mainTitle {
+    font-size: 3rem;
+    margin-bottom: 2rem;
+  }
+
+  .subtitle {
+    font-size: 0.95rem;
+    padding: 0 1rem;
+  }
+
+  .buttonGroup {
+    flex-direction: column;
+    width: 100%;
+    max-width: 250px;
+    margin: 2rem auto 0;
+  }
+
+  .loginButton,
+  .joinButton {
+    width: 100%;
+    padding: 1rem;
+  }
+
+  .blueWave,
+  .blueWave2,
+  .blueWave3 {
+    filter: blur(60px);
+  }
+
+  .glowOrb,
+  .glowOrb2 {
+    width: 400px;
+    height: 400px;
+  }
+}
+
+@media (max-width: 480px) {
+  .mainTitle {
+    font-size: 2.5rem;
+  }
+
+  .subtitle {
+    font-size: 0.9rem;
+  }
+}
+
+.blueWave,
+.blueWave2,
+.blueWave3,
+.glowOrb,
+.glowOrb2 {
+  transition: opacity 0.3s ease-out; /* 👈 추가 */
+}

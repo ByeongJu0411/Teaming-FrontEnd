@@ -1,0 +1,84 @@
+.social_buttons {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.social_button {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 18px;
+  border: none;
+  color: white;
+}
+
+.social_button:hover {
+  transform: translateY(-2px) scale(1.05);
+}
+
+.kakao_button {
+  background: #ffe700;
+}
+
+.kakao_button:hover {
+  background: #e6cf00;
+}
+
+.google_button {
+  background: #e94334;
+}
+
+.google_button:hover {
+  background: #d23621;
+}
+
+.naver_button {
+  background: #1ec800;
+}
+
+.naver_button:hover {
+  background: #1ab300;
+}
+
+.apple_button {
+  background: #000000;
+}
+
+.apple_button:hover {
+  background: #1a1a1a;
+}
+
+/* social.module.css */
+.loading_spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #333;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.social_button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.logged_in {
+  text-align: center;
+  padding: 20px;
+}

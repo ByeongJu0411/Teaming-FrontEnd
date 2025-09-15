@@ -1,0 +1,33 @@
+.container {
+  width: 76%;
+  min-height: 20vh;
+  background: black;
+  border-top: 1px solid #838383;
+  position: relative;
+  z-index: 1;
+  display: flex;
+
+  overflow: hidden;
+  flex-direction: column;
+}
+
+.teaming {
+  padding-top: 24px;
+  padding-bottom: 12px;
+  font-size: 24px;
+  color: white;
+  font-weight: 700;
+}
+
+.created {
+  padding-bottom: 4px;
+  font-size: 16px;
+  color: #838383;
+  font-weight: 400;
+}
+
+.year {
+  font-size: 16px;
+  color: #838383;
+  font-weight: 400;
+}
