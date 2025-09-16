@@ -1,8 +1,7 @@
 "use client";
 
 import styles from "./chatroom.module.css";
-import { FiMic, FiImage, FiPlus, FiSend } from "react-icons/fi";
-import { LuSmile } from "react-icons/lu";
+import { FiFile, FiPlus, FiSend } from "react-icons/fi";
 import React, { useRef, useState, useEffect } from "react";
 import { FcDocument, FcAddImage } from "react-icons/fc";
 import { ImExit } from "react-icons/im";
@@ -10,6 +9,7 @@ import { ImExit } from "react-icons/im";
 import DataRoom from "./dataroom";
 import CreateMission from "./createmission";
 import AssignmentRoom from "./assignmentroom";
+import ChatMessage from "./chatmessage"; // 분리된 ChatMessage 컴포넌트 import
 
 interface ChatRoomProps {
   roomData: {
@@ -26,17 +26,18 @@ interface ChatMessageType {
   senderName: string;
   timestamp: string;
   messageType: "TEXT" | "IMAGE" | "FILE" | "SYSTEM";
+  readBy: number[]; // 읽음 상태 추가
 }
 
 // 테스트용 유저 데이터
 const testUsers = [
-  { id: "1", name: "권민석", avatar: "🐱" },
-  { id: "2", name: "팀장 최순조", avatar: "👨‍💼" },
-  { id: "3", name: "정치학 존잘남", avatar: "😎" },
-  { id: "4", name: "팀플하기싫다", avatar: "😩" },
+  { id: 1, name: "권민석", avatar: "🐱" },
+  { id: 2, name: "팀장 최순조", avatar: "👨‍💼" },
+  { id: 3, name: "정치학 존잘남", avatar: "😎" },
+  { id: 4, name: "팀플하기싫다", avatar: "😩" },
 ];
 
-// 테스트용 메시지 데이터
+// 테스트용 메시지 데이터 (읽음 상태 포함)
 const testMessages: ChatMessageType[] = [
   {
     id: 1,
@@ -45,6 +46,7 @@ const testMessages: ChatMessageType[] = [
     senderName: "팀장 최순조",
     timestamp: "2024-01-15T08:51:00Z",
     messageType: "TEXT",
+    readBy: [1, 2, 3, 4], // 모두 읽음
   },
   {
     id: 2,
@@ -53,6 +55,7 @@ const testMessages: ChatMessageType[] = [
     senderName: "팀장 최순조",
     timestamp: "2024-01-15T08:51:30Z",
     messageType: "TEXT",
+    readBy: [1, 2, 3], // 4번 사용자가 안 읽음
   },
   {
     id: 3,
@@ -61,6 +64,7 @@ const testMessages: ChatMessageType[] = [
     senderName: "권민석",
     timestamp: "2024-01-15T08:52:30Z",
     messageType: "TEXT",
+    readBy: [1, 2], // 3, 4번 사용자가 안 읽음
   },
   {
     id: 4,
@@ -69,93 +73,31 @@ const testMessages: ChatMessageType[] = [
     senderName: "정치학 존잘남",
     timestamp: "2024-01-15T08:52:00Z",
     messageType: "TEXT",
+    readBy: [1, 3], // 2, 4번 사용자가 안 읽음
   },
-]; // 임시 사용자 정보
+];
+
+// 임시 사용자 정보
 const CURRENT_USER = {
-  id: "1",
+  id: 1,
   name: "권민석",
   token: "your-jwt-token-here",
 };
 
 export default function ChatRoom({ roomData }: ChatRoomProps) {
-  const [fileModalStatus, setFileModalStatus] = useState(false); // 파일 첨부 모달
-  const [dataRoomModalStatus, setDataRoomModalStatus] = useState(false); // 자료실 모달
+  const [fileModalStatus, setFileModalStatus] = useState(false);
+  const [dataRoomModalStatus, setDataRoomModalStatus] = useState(false);
   const [missionModalStatus, setMissionModalStatus] = useState(false);
   const [assignmentModalStatus, setAssignmentModalStatus] = useState(false);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessageType[]>(testMessages);
   const [isConnected, setIsConnected] = useState(true);
+  const [hoveredMessage, setHoveredMessage] = useState<number | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const file = useRef<HTMLInputElement | null>(null);
-
-  // 개선된 ChatMessage 컴포넌트
-  const ChatMessageComponent = ({
-    message: msg,
-    currentUserId,
-    showSenderName,
-    isFirstInGroup,
-    isLastInGroup,
-  }: {
-    message: ChatMessageType;
-    currentUserId: string;
-    showSenderName: boolean;
-    isFirstInGroup: boolean;
-    isLastInGroup: boolean;
-  }) => {
-    const isMyMessage = msg.senderId.toString() === currentUserId;
-    const isSystemMessage = msg.messageType === "SYSTEM";
-
-    const formatTime = (timestamp: string) => {
-      const date = new Date(timestamp);
-      return date.toLocaleTimeString("ko-KR", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      });
-    };
-
-    if (isSystemMessage) {
-      return (
-        <div className={styles.systemMessage}>
-          <div className={styles.systemMessageBubble}>{msg.content}</div>
-        </div>
-      );
-    }
-
-    return (
-      <div
-        className={`${styles.messageWrapper} ${isLastInGroup ? styles.lastInGroup : ""} ${
-          isMyMessage ? styles.myMessage : styles.otherMessage
-        }`}
-      >
-        <div className={`${styles.messageContent} ${isMyMessage ? styles.myMessage : ""}`}>
-          {/* 아바타는 첫 메시지에만 표시 */}
-          {!isMyMessage && (
-            <div className={styles.avatarSpace}>
-              {isFirstInGroup && <div className={styles.avatar}>{msg.senderName[0]}</div>}
-            </div>
-          )}
-
-          <div className={`${styles.messageBody} ${isMyMessage ? styles.myMessage : styles.otherMessage}`}>
-            {/* 발신자 이름은 첫 메시지에만 표시 */}
-            {!isMyMessage && isFirstInGroup && <div className={styles.senderName}>{msg.senderName}</div>}
-
-            <div className={`${styles.bubbleContainer} ${isMyMessage ? styles.myMessage : ""}`}>
-              <div className={`${styles.messageBubble} ${isMyMessage ? styles.myMessage : styles.otherMessage}`}>
-                {msg.content}
-              </div>
-
-              {/* 시간은 마지막 메시지에만 표시 */}
-              {isLastInGroup && <div className={styles.messageTime}>{formatTime(msg.timestamp)}</div>}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   // 자동 스크롤
   const scrollToBottom = () => {
@@ -172,10 +114,11 @@ export default function ChatRoom({ roomData }: ChatRoomProps) {
     const newMessage: ChatMessageType = {
       id: Date.now(),
       content: trimmedMessage,
-      senderId: parseInt(CURRENT_USER.id),
+      senderId: CURRENT_USER.id,
       senderName: CURRENT_USER.name,
       timestamp: new Date().toISOString(),
       messageType: "TEXT",
+      readBy: [CURRENT_USER.id], // 본인만 읽음 상태로 시작
     };
 
     setMessages((prev) => [...prev, newMessage]);
@@ -233,17 +176,18 @@ export default function ChatRoom({ roomData }: ChatRoomProps) {
                   // 같은 발신자의 마지막 메시지인지 확인
                   const isLastInGroup = !nextMessage || nextMessage.senderId !== msg.senderId;
 
-                  // showSenderName은 이제 사용하지 않고 isFirstInGroup을 사용
                   const showSenderName = isFirstInGroup;
 
                   return (
-                    <ChatMessageComponent
+                    <ChatMessage
                       key={msg.id}
                       message={msg}
                       currentUserId={CURRENT_USER.id}
                       showSenderName={showSenderName}
-                      isFirstInGroup={isFirstInGroup}
-                      isLastInGroup={isLastInGroup}
+                      isLastMessage={isLastInGroup}
+                      allUsers={testUsers}
+                      hoveredMessage={hoveredMessage}
+                      setHoveredMessage={setHoveredMessage}
                     />
                   );
                 })}
@@ -268,15 +212,6 @@ export default function ChatRoom({ roomData }: ChatRoomProps) {
               />
 
               <div className={styles.inputIcons}>
-                <button type="button" className={styles.iconButton}>
-                  <FiMic size={20} color="#666" />
-                </button>
-                <button type="button" className={styles.iconButton}>
-                  <LuSmile size={20} color="#666" />
-                </button>
-                <button type="button" className={styles.iconButton}>
-                  <FiImage size={20} color="#666" />
-                </button>
                 <button
                   type="submit"
                   className={`${styles.iconButton} ${message.trim() ? styles.sendActive : ""}`}
