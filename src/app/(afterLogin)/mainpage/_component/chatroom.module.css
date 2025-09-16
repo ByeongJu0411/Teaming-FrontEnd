@@ -104,6 +104,7 @@
   display: flex;
   padding: 0 16px;
   margin-bottom: 8px; /* 메시지 간 기본 간격 */
+  position: relative; /* 툴팁 위치를 위한 설정 */
 }
 
 .messageWrapper.lastInGroup {
@@ -155,6 +156,7 @@
   flex-direction: column;
   gap: 2px;
   flex: 1;
+  position: relative; /* 툴팁 위치를 위한 설정 */
 }
 
 .messageBody.myMessage {
@@ -165,85 +167,8 @@
   align-items: flex-start;
 }
 
-/* 발신자 이름 */
-.senderName {
-  font-size: 12px;
-  color: #999;
-  font-weight: 500;
-  margin-bottom: 4px;
-  padding-left: 4px;
-}
-
-/* 메시지 버블과 시간 컨테이너 */
-.bubbleContainer {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-}
-
-.bubbleContainer.myMessage {
-  flex-direction: row-reverse;
-}
-
-/* 메시지 버블 */
-.messageBubble {
-  padding: 10px 14px;
-  max-width: 320px;
-  text-align: left;
-  word-wrap: break-word;
-  word-break: break-word;
-  line-height: 1.4;
-  font-size: 14px;
-  font-weight: 400;
-}
-
-/* 내 메시지 버블 스타일 */
-.messageBubble.myMessage {
-  background: #3f3fd4;
-  color: white;
-  border-radius: 16px;
-  border-bottom-right-radius: 4px; /* 우측 하단만 뾰족하게 */
-}
-
-/* 상대방 메시지 버블 스타일 */
-.messageBubble.otherMessage {
-  background: #23232a;
-  color: white;
-  border-radius: 16px;
-  border-bottom-left-radius: 4px; /* 좌측 하단만 뾰족하게 */
-}
-
-/* 시간 표시 */
-.messageTime {
-  font-size: 11px;
-  color: #999;
-  white-space: nowrap;
-  margin-bottom: 2px;
-  font-weight: 400;
-}
-
-/* 시스템 메시지 */
-.systemMessage {
-  display: flex;
-  justify-content: center;
-  margin: 16px 0;
-  padding: 0 16px;
-}
-
-.systemMessageBubble {
-  background: white;
-  color: #333;
-  padding: 8px 16px;
-  border-radius: 12px;
-  font-size: 13px;
-  text-align: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  max-width: 80%;
-}
-
 /* ===== 입력창 영역 ===== */
 .chatInput {
-  width: calc(100% - 2rem); /* 부모 패딩 고려 */
   height: 52px;
   background-color: #f7f7f7;
   border-radius: 26px;
@@ -624,5 +549,17 @@
   .chatPage {
     flex: 1;
     min-height: 0;
+  }
+
+  /* 모바일에서 툴팁 위치 조정 */
+  .unreadTooltip {
+    right: 10px;
+    left: auto;
+    transform: none;
+  }
+
+  .unreadTooltip::after {
+    right: 20px;
+    left: auto;
   }
 }

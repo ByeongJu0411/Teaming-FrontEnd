@@ -9,13 +9,17 @@ interface ChatMessage {
   senderName: string;
   timestamp: string;
   messageType: "TEXT" | "IMAGE" | "FILE" | "SYSTEM";
+  readBy: number[]; // 읽음 상태 추가
 }
 
 interface ChatMessageProps {
   message: ChatMessage;
-  currentUserId: string;
+  currentUserId: number;
   showSenderName?: boolean;
   isLastMessage?: boolean;
+  allUsers: Array<{ id: number; name: string; avatar: string }>; // 전체 사용자 목록
+  hoveredMessage: number | null;
+  setHoveredMessage: (id: number | null) => void;
 }
 
 export default function ChatMessage({
@@ -23,9 +27,25 @@ export default function ChatMessage({
   currentUserId,
   showSenderName = true,
   isLastMessage = false,
+  allUsers,
+  hoveredMessage,
+  setHoveredMessage,
 }: ChatMessageProps) {
-  const isMyMessage = message.senderId.toString() === currentUserId;
+  const isMyMessage = message.senderId === currentUserId;
   const isSystemMessage = message.messageType === "SYSTEM";
+
+  // 안 읽은 사용자 계산 함수
+  const getUnreadUsers = (message: ChatMessage) => {
+    return allUsers.filter((user) => user.id !== message.senderId && !message.readBy.includes(user.id));
+  };
+
+  // 안 읽은 사용자 수 계산 함수
+  const getUnreadCount = (message: ChatMessage) => {
+    return getUnreadUsers(message).length;
+  };
+
+  const unreadCount = getUnreadCount(message);
+  const unreadUsers = getUnreadUsers(message);
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -55,11 +75,15 @@ export default function ChatMessage({
           </div>
         )}
 
-        <div className={styles.messageContent}>
+        <div className={`${styles.messageContent} ${isMyMessage ? styles.myMessage : styles.otherMessage}`}>
           {!isMyMessage && showSenderName && <div className={styles.senderName}>{message.senderName}</div>}
 
           <div className={styles.messageRow}>
-            <div className={`${styles.messageBubble} ${isMyMessage ? styles.myBubble : styles.otherBubble}`}>
+            <div
+              className={`${styles.messageBubble} ${isMyMessage ? styles.myBubble : styles.otherBubble}`}
+              onMouseEnter={() => setHoveredMessage(message.id)}
+              onMouseLeave={() => setHoveredMessage(null)}
+            >
               {message.messageType === "TEXT" && <span className={styles.messageText}>{message.content}</span>}
               {message.messageType === "IMAGE" && (
                 <img src={message.content} alt="첨부 이미지" className={styles.messageImage} />
@@ -71,8 +95,27 @@ export default function ChatMessage({
               )}
             </div>
 
-            <div className={styles.messageTime}>{formatTime(message.timestamp)}</div>
+            {/* 시간과 읽음 상태 표시 */}
+            {isLastMessage && (
+              <div className={styles.messageInfo}>
+                <div className={styles.messageTime}>{formatTime(message.timestamp)}</div>
+                {/* 안 읽은 사람이 있을 때 표시 */}
+                {unreadCount > 0 && <div className={styles.unreadCount}>{unreadCount}</div>}
+              </div>
+            )}
           </div>
+
+          {/* 호버 시 안 읽은 사용자 목록 표시 */}
+          {hoveredMessage === message.id && unreadCount > 0 && (
+            <div className={styles.unreadTooltip}>
+              <div className={styles.tooltipHeader}>안 읽은 사람</div>
+              {unreadUsers.map((user) => (
+                <div key={user.id} className={styles.tooltipUser}>
+                  <span className={styles.tooltipName}>{user.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

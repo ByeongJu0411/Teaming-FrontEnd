@@ -29,6 +29,11 @@
 }
 
 /* 발신자 아바타 */
+.avatarSpace {
+  width: 32px;
+  flex-shrink: 0;
+}
+
 .senderAvatar {
   width: 32px;
   height: 32px;
@@ -49,13 +54,14 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  position: relative; /* 툴팁 위치를 위한 설정 */
 }
 
-.myMessage .messageContent {
+.messageContent.myMessage {
   align-items: flex-end;
 }
 
-.otherMessage .messageContent {
+.messageContent.otherMessage {
   align-items: flex-start;
 }
 
@@ -87,10 +93,12 @@
 .messageBubble {
   border-radius: 16px;
   padding: 10px 14px;
-  max-width: 280px;
+  max-width: 320px;
+  text-align: left;
   word-wrap: break-word;
   word-break: break-word;
   position: relative;
+  cursor: pointer; /* 호버 가능함을 표시 */
 }
 
 .myBubble {
@@ -100,8 +108,8 @@
 }
 
 .otherBubble {
-  background: #f7f7f7;
-  color: #333;
+  background: #23232a;
+  color: white;
   border-bottom-left-radius: 4px;
 }
 
@@ -138,12 +146,119 @@
   color: #333;
 }
 
+/* ===== 메시지 정보 (시간 + 읽음 상태) ===== */
+.messageInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 2px;
+}
+
 /* 시간 표시 */
 .messageTime {
   font-size: 11px;
   color: #999;
   white-space: nowrap;
-  margin-bottom: 2px;
+  font-weight: 400;
+}
+
+/* 안 읽은 사람 수 표시 */
+.unreadCount {
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+/* ===== 안 읽은 사용자 툴팁 ===== */
+.unreadTooltip {
+  position: absolute;
+  bottom: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 1000;
+  margin-bottom: 5px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 내 메시지일 때 툴팁을 오른쪽에 배치 */
+.messageContent.myMessage .unreadTooltip {
+  right: 0;
+}
+
+/* 상대방 메시지일 때 툴팁을 왼쪽에 배치 */
+.messageContent.otherMessage .unreadTooltip {
+  right: 0;
+}
+
+.unreadTooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid rgba(0, 0, 0, 0.9);
+}
+
+/* 내 메시지 툴팁 화살표 위치 */
+.messageContent.myMessage .unreadTooltip::after {
+  right: 20px;
+}
+
+/* 상대방 메시지 툴팁 화살표 위치 */
+.messageContent.otherMessage .unreadTooltip::after {
+  left: 20px;
+}
+
+.tooltipHeader {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #3f3fd4;
+  font-size: 11px;
+}
+
+.tooltipUser {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.tooltipUser:last-child {
+  margin-bottom: 0;
+}
+
+.tooltipAvatar {
+  font-size: 14px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.tooltipName {
+  font-size: 12px;
+  color: #fff;
   font-weight: 400;
 }
 
@@ -232,5 +347,20 @@
   40% {
     transform: scale(1);
     opacity: 1;
+  }
+}
+
+/* ===== 반응형 디자인 ===== */
+@media (max-width: 768px) {
+  /* 모바일에서 툴팁 위치 조정 */
+  .unreadTooltip {
+    right: 10px;
+    left: auto;
+    transform: none;
+  }
+
+  .unreadTooltip::after {
+    right: 20px;
+    left: auto;
   }
 }
