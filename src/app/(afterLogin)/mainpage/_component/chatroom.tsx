@@ -9,6 +9,7 @@ import { ImExit } from "react-icons/im";
 
 import DataRoom from "./dataroom";
 import CreateMission from "./createmission";
+import AssignmentRoom from "./assignmentroom";
 
 interface ChatRoomProps {
   roomData: {
@@ -80,6 +81,7 @@ export default function ChatRoom({ roomData }: ChatRoomProps) {
   const [fileModalStatus, setFileModalStatus] = useState(false); // 파일 첨부 모달
   const [dataRoomModalStatus, setDataRoomModalStatus] = useState(false); // 자료실 모달
   const [missionModalStatus, setMissionModalStatus] = useState(false);
+  const [assignmentModalStatus, setAssignmentModalStatus] = useState(false);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessageType[]>(testMessages);
   const [isConnected, setIsConnected] = useState(true);
@@ -312,7 +314,7 @@ export default function ChatRoom({ roomData }: ChatRoomProps) {
             <div className={styles.item} onClick={() => setMissionModalStatus(!missionModalStatus)}>
               ➕ 과제 생성하기
             </div>
-            <div className={styles.item} onClick={() => setMissionModalStatus(!missionModalStatus)}>
+            <div className={styles.item} onClick={() => setAssignmentModalStatus(!assignmentModalStatus)}>
               📖 과제 확인하기
             </div>
           </div>
@@ -357,6 +359,8 @@ export default function ChatRoom({ roomData }: ChatRoomProps) {
       {dataRoomModalStatus && <DataRoom setModal={() => setDataRoomModalStatus(!dataRoomModalStatus)} />}
       {/* 과제 생성하기 모달 */}
       {missionModalStatus && <CreateMission setModal={() => setMissionModalStatus(!missionModalStatus)} />}
+      {/* 과제 확인하기 모달 */}
+      {assignmentModalStatus && <AssignmentRoom setModal={() => setAssignmentModalStatus(!assignmentModalStatus)} />}
     </>
   );
 }
