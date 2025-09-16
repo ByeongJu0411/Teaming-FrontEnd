@@ -1,7 +1,7 @@
 "use client";
 
 import styles from "./chatroom.module.css";
-import { FiFile, FiPlus, FiSend } from "react-icons/fi";
+import { FiPlus, FiSend } from "react-icons/fi";
 import React, { useRef, useState, useEffect } from "react";
 import { FcDocument, FcAddImage } from "react-icons/fc";
 import { ImExit } from "react-icons/im";
