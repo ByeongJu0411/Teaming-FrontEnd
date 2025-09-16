@@ -33,6 +33,7 @@
   justify-content: space-between;
   padding: 1rem 1.5rem;
   border-bottom: 1px solid #333;
+  gap: 1rem;
   flex-shrink: 0;
 }
 
@@ -59,26 +60,7 @@
   color: #f7f7f7;
   margin: 0;
   flex: 1;
-  text-align: center;
-}
-
-.uploadButton {
-  background: #3b82f6;
-  border: none;
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: background-color 0.2s ease;
-}
-
-.uploadButton:hover {
-  background: #2563eb;
+  text-align: left;
 }
 
 .modalContent {

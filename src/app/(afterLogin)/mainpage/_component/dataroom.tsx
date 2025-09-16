@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useRef } from "react";
 import styles from "./dataroom.module.css";
-import { IoChevronBack, IoCloudUpload } from "react-icons/io5";
+import { IoChevronBack } from "react-icons/io5";
 import { FaFilePdf, FaFileWord, FaFilePowerpoint, FaFileAlt } from "react-icons/fa";
 
 interface ModalProps {
@@ -46,10 +46,6 @@ const DataRoom = ({ setModal }: ModalProps) => {
     event.stopPropagation();
   };
 
-  const handleFileUpload = () => {
-    fileInputRef.current?.click();
-  };
-
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
@@ -87,10 +83,6 @@ const DataRoom = ({ setModal }: ModalProps) => {
             <IoChevronBack size={24} />
           </button>
           <h2 className={styles.modalTitle}>자료실</h2>
-          <button onClick={handleFileUpload} className={styles.uploadButton}>
-            <IoCloudUpload size={20} />
-            자료 추가
-          </button>
         </div>
 
         {/* 파일 입력 (숨김) */}
