@@ -29,7 +29,7 @@ export default function FindRoom(): JSX.Element {
     roomType: "Basic Room",
     price: "각 5170원",
     description: "스타벅스 아이스 아메리카노 1개",
-    avatar: "/images/default-avatar.png",
+    avatar: "./basicProfile.webp",
   };
 
   const handleSearch = (): void => {
