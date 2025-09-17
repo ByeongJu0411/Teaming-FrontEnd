@@ -18,57 +18,61 @@ const handler = NextAuth({
       clientId: process.env.NAVER_CLIENT_ID!,
       clientSecret: process.env.NAVER_CLIENT_SECRET!,
     }),
-    // Apple은 좀 더 복잡한 설정이 필요해서 일단 제외
   ],
   callbacks: {
     async jwt({ token, account, profile }) {
-      // 소셜 로그인 성공 시 토큰 정보 저장
+      // 🔄 소셜 로그인 직후에 백엔드 JWT 발급받기
       if (account) {
-        token.accessToken = account.access_token;
-        token.provider = account.provider;
-        token.providerAccountId = account.providerAccountId;
+        try {
+          // 🎯 제공자별로 올바른 엔드포인트 호출
+          let endpoint = "";
+          switch (account.provider) {
+            case "google":
+              endpoint = "/authorization/google/app";
+              break;
+            case "kakao":
+              endpoint = "/authorization/kakao/app"; // 백엔드에서 구현 필요
+              break;
+            case "naver":
+              endpoint = "/authorization/naver/app"; // 백엔드에서 구현 필요
+              break;
+            default:
+              throw new Error(`지원하지 않는 제공자: ${account.provider}`);
+          }
+
+          const response = await fetch(`${process.env.BACKEND_URL}${endpoint}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              accessToken: account.access_token, // 소셜 플랫폼 토큰
+            }),
+          });
+
+          if (response.ok) {
+            const backendTokens = await response.json();
+            // 🔑 백엔드 JWT를 NextAuth 토큰에 저장
+            token.backendAccessToken = backendTokens.accessToken;
+            token.backendRefreshToken = backendTokens.refreshToken;
+            token.provider = account.provider;
+          } else {
+            console.error("백엔드 JWT 발급 실패");
+          }
+        } catch (error) {
+          console.error("백엔드 연동 오류:", error);
+        }
       }
       return token;
     },
+
     async session({ session, token }) {
-      // 세션에 토큰 정보 포함
-      session.accessToken = token.accessToken as string;
+      // 🎯 백엔드 JWT를 세션에 제공 (소셜 토큰이 아닌!)
+      session.accessToken = token.backendAccessToken as string;
+      session.refreshToken = token.backendRefreshToken as string;
       session.provider = token.provider as string;
-      session.providerAccountId = token.providerAccountId as string;
       return session;
     },
-    async signIn({ user, account, profile }) {
-      // 소셜 로그인 성공 후 백엔드로 토큰 전송
-      try {
-        const response = await fetch(`${process.env.BACKEND_URL}/auth/social-login`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            provider: account?.provider,
-            accessToken: account?.access_token,
-            refreshToken: account?.refresh_token,
-            userInfo: {
-              id: user.id,
-              email: user.email,
-              name: user.name,
-              image: user.image,
-            },
-          }),
-        });
 
-        if (response.ok) {
-          const backendData = await response.json();
-          // 백엔드에서 받은 JWT 토큰 등을 저장할 수 있어요
-          return true;
-        }
-        return false;
-      } catch (error) {
-        console.error("백엔드 로그인 에러:", error);
-        return false;
-      }
-    },
+    // ❌ signIn 콜백 제거 (jwt 콜백에서 처리하므로 불필요)
   },
 });
 
