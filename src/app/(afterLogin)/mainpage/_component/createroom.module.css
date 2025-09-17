@@ -55,9 +55,16 @@
   font-weight: bold;
 }
 
+.title_title2 {
+  color: #6096ff;
+  font-size: 20px;
+  font-weight: bold;
+  margin-top: 8px;
+}
+
 /* 피그마 디자인에 맞는 입력 필드 */
 .roomTitleInputUpdated {
-  width: 50%;
+  width: 80%;
   height: 40px;
   background-color: #252530;
   border: 1px solid #292929;
@@ -158,6 +165,107 @@
   font-size: 20px;
   font-weight: bold;
   color: #f7f7f7;
+}
+
+/* 프로필 사진 설정 관련 스타일 */
+.profileImageSection {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.profileImageUpload {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.profileImagePreview {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid #6096ff;
+}
+
+.profileImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profileImagePlaceholder {
+  width: 160px;
+  height: 160px;
+  background-color: #252530;
+  border: 2px dashed #555;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.profileImageIcon {
+  font-size: 24px;
+  opacity: 0.7;
+}
+
+.profileImageText {
+  font-size: 10px;
+  color: #999;
+  margin: 0;
+  text-align: center;
+}
+
+.profileImageInput {
+  display: none;
+}
+
+.profileImageButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profileImageLabel,
+.removeImageBtn {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #6096ff 0%, #4a7fff 100%);
+  color: white;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  box-shadow: 0 2px 8px rgba(96, 150, 255, 0.3);
+}
+
+.profileImageLabel:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(96, 150, 255, 0.4);
+}
+
+.profileImageInfo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profileImageInfoText {
+  font-size: 12px;
+  color: #999;
+  margin: 0;
+  line-height: 1.3;
 }
 
 .roomTypeSection {
@@ -392,7 +500,7 @@
   background: linear-gradient(135deg, #6096ff 0%, #4a7fff 100%);
   color: white;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -485,5 +593,16 @@
   .eliteRoomCard .roomCardTitleUpdated,
   .eliteRoomCard .roomCardPriceUpdated {
     margin-left: 35px; /* 모바일에서도 크라운 공간 유지 */
+  }
+
+  /* 모바일에서 프로필 사진 업로드 섹션 조정 */
+  .profileImageUpload {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .profileImageInfo {
+    font-size: 11px;
   }
 }

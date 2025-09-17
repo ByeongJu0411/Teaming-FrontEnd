@@ -1,14 +1,17 @@
 "use client";
-import { useState } from "react";
+import { useState, ChangeEvent, JSX } from "react";
 import styles from "./createroom.module.css";
 import Image from "next/image";
 
 export default function CreateRoom() {
-  const [teamCount, setTeamCount] = useState(1);
-  const [roomTitle, setRoomTitle] = useState("");
-  const [selectedRoom, setSelectedRoom] = useState("");
+  const [teamCount, setTeamCount] = useState<number>(1);
+  const [roomTitle, setRoomTitle] = useState<string>("");
+  const [roomSubTitle, setRoomSubTitle] = useState<string>("");
+  const [selectedRoom, setSelectedRoom] = useState<string>("");
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string>("/basicProfile.webp");
 
-  const handleCountChange = (increment: boolean) => {
+  const handleCountChange = (increment: boolean): void => {
     if (increment) {
       setTeamCount((prev) => prev + 1);
     } else {
@@ -16,7 +19,36 @@ export default function CreateRoom() {
     }
   };
 
-  const roomTypes = [
+  const handleImageUpload = (event: ChangeEvent<HTMLInputElement>): void => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setProfileImage(file);
+      const reader = new FileReader();
+      reader.onload = (e: ProgressEvent<FileReader>) => {
+        if (e.target?.result) {
+          setProfileImagePreview(e.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeProfileImage = (): void => {
+    setProfileImage(null);
+    setProfileImagePreview("/basicProfile.webp");
+  };
+
+  interface RoomType {
+    id: string;
+    name: string;
+    price: string;
+    description: string;
+    icon: string;
+    iconClass: string;
+    isElite?: boolean;
+  }
+
+  const roomTypes: RoomType[] = [
     {
       id: "basic",
       name: "Basic Room",
@@ -45,7 +77,7 @@ export default function CreateRoom() {
   ];
 
   // teamCount만큼 초대 입력 섹션을 렌더링
-  const renderInviteSections = () => {
+  const renderInviteSections = (): JSX.Element[] => {
     return Array.from({ length: teamCount }, (_, index) => (
       <div key={index} className={styles.inviteInputSection}>
         <input className={styles.inviteInputUpdated} placeholder={`팀원 ${index + 1}의 이메일을 입력해주세요.`} />
@@ -63,8 +95,15 @@ export default function CreateRoom() {
         <input
           className={styles.roomTitleInputUpdated}
           value={roomTitle}
-          onChange={(e) => setRoomTitle(e.target.value)}
-          placeholder="프로젝트 및 팀플수업"
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setRoomTitle(e.target.value)}
+          placeholder="티밍룸 제목"
+        />
+        <p className={styles.title_title2}>부제목 및 한줄소개</p>
+        <input
+          className={styles.roomTitleInputUpdated}
+          value={roomSubTitle}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setRoomSubTitle(e.target.value)}
+          placeholder="부제목 및 한줄소개"
         />
       </div>
 
@@ -78,6 +117,56 @@ export default function CreateRoom() {
           <button className={styles.countBtnUpdated} onClick={() => handleCountChange(true)}>
             +
           </button>
+        </div>
+      </div>
+
+      {/* 새로 추가된 프로필 사진 설정 섹션 */}
+      <div className={styles.roomTitle}>
+        <p className={styles.title_title}>티밍룸 프로필 사진</p>
+        <div className={styles.profileImageSection}>
+          <div className={styles.profileImageUpload}>
+            {profileImagePreview ? (
+              <div className={styles.profileImagePreview}>
+                <Image
+                  src={profileImagePreview}
+                  alt="프로필 미리보기"
+                  width={80}
+                  height={80}
+                  className={styles.profileImage}
+                  style={{
+                    objectFit: "cover",
+                    width: "100%",
+                    height: "100%",
+                  }}
+                />
+              </div>
+            ) : (
+              <div className={styles.profileImagePlaceholder}>
+                <div className={styles.profileImageIcon}>📷</div>
+                <p className={styles.profileImageText}>프로필 사진 추가</p>
+              </div>
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className={styles.profileImageInput}
+              id="profileImageInput"
+            />
+          </div>
+          <div className={styles.profileImageButton}>
+            <label htmlFor="profileImageInput" className={styles.profileImageLabel}>
+              {profileImagePreview ? "사진 변경" : "사진 선택"}
+            </label>
+            <button className={styles.removeImageBtn} onClick={removeProfileImage} type="button">
+              초기화
+            </button>
+          </div>
+          <div className={styles.profileImageInfo}>
+            <p className={styles.profileImageInfoText}>• 권장 크기: 500x500px</p>
+            <p className={styles.profileImageInfoText}>• 지원 형식: JPG, PNG, GIF</p>
+            <p className={styles.profileImageInfoText}>• 최대 크기: 5MB</p>
+          </div>
         </div>
       </div>
 
