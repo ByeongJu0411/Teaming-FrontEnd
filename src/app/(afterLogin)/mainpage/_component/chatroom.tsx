@@ -9,7 +9,8 @@ import { ImExit } from "react-icons/im";
 import DataRoom from "./dataroom";
 import CreateMission from "./createmission";
 import AssignmentRoom from "./assignmentroom";
-import ChatMessage from "./chatmessage"; // 분리된 ChatMessage 컴포넌트 import
+import ChatMessage from "./chatmessage";
+import PaymentModal from "./payment"; // PaymentModal 컴포넌트 import 추가
 
 interface ChatRoomProps {
   roomData: {
@@ -26,7 +27,7 @@ interface ChatMessageType {
   senderName: string;
   timestamp: string;
   messageType: "TEXT" | "IMAGE" | "FILE" | "SYSTEM";
-  readBy: number[]; // 읽음 상태 추가
+  readBy: number[];
 }
 
 // 테스트용 유저 데이터
@@ -37,7 +38,7 @@ const testUsers = [
   { id: 4, name: "팀플하기싫다", avatar: "😩" },
 ];
 
-// 테스트용 메시지 데이터 (읽음 상태 포함)
+// 테스트용 메시지 데이터
 const testMessages: ChatMessageType[] = [
   {
     id: 1,
@@ -46,7 +47,7 @@ const testMessages: ChatMessageType[] = [
     senderName: "팀장 최순조",
     timestamp: "2024-01-15T08:51:00Z",
     messageType: "TEXT",
-    readBy: [1, 2, 3, 4], // 모두 읽음
+    readBy: [1, 2, 3, 4],
   },
   {
     id: 2,
@@ -55,7 +56,7 @@ const testMessages: ChatMessageType[] = [
     senderName: "팀장 최순조",
     timestamp: "2024-01-15T08:51:30Z",
     messageType: "TEXT",
-    readBy: [1, 2, 3], // 4번 사용자가 안 읽음
+    readBy: [1, 2, 3],
   },
   {
     id: 3,
@@ -64,7 +65,7 @@ const testMessages: ChatMessageType[] = [
     senderName: "권민석",
     timestamp: "2024-01-15T08:52:30Z",
     messageType: "TEXT",
-    readBy: [1, 2], // 3, 4번 사용자가 안 읽음
+    readBy: [1, 2],
   },
   {
     id: 4,
@@ -73,7 +74,7 @@ const testMessages: ChatMessageType[] = [
     senderName: "정치학 존잘남",
     timestamp: "2024-01-15T08:52:00Z",
     messageType: "TEXT",
-    readBy: [1, 3], // 2, 4번 사용자가 안 읽음
+    readBy: [1, 3],
   },
 ];
 
@@ -93,6 +94,9 @@ export default function ChatRoom({ roomData }: ChatRoomProps) {
   const [messages, setMessages] = useState<ChatMessageType[]>(testMessages);
   const [isConnected, setIsConnected] = useState(true);
   const [hoveredMessage, setHoveredMessage] = useState<number | null>(null);
+
+  // Payment 컴포넌트 표시 상태 추가
+  const [showPayment, setShowPayment] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -118,7 +122,7 @@ export default function ChatRoom({ roomData }: ChatRoomProps) {
       senderName: CURRENT_USER.name,
       timestamp: new Date().toISOString(),
       messageType: "TEXT",
-      readBy: [CURRENT_USER.id], // 본인만 읽음 상태로 시작
+      readBy: [CURRENT_USER.id],
     };
 
     setMessages((prev) => [...prev, newMessage]);
@@ -145,6 +149,11 @@ export default function ChatRoom({ roomData }: ChatRoomProps) {
     setFileModalStatus(false);
   };
 
+  // Payment 처리 완료 핸들러
+  const handlePaymentComplete = () => {
+    setShowPayment(false);
+  };
+
   // 컴포넌트 마운트 시 스크롤
   useEffect(() => {
     scrollToBottom();
@@ -164,63 +173,83 @@ export default function ChatRoom({ roomData }: ChatRoomProps) {
           </div>
 
           <div className={styles.chatBody}>
-            <div className={styles.chatMain}>
-              <div ref={messagesContainerRef} className={styles.messagesContainer}>
-                {messages.map((msg, index) => {
-                  const prevMessage = index > 0 ? messages[index - 1] : null;
-                  const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
-
-                  // 같은 발신자의 첫 메시지인지 확인
-                  const isFirstInGroup = !prevMessage || prevMessage.senderId !== msg.senderId;
-
-                  // 같은 발신자의 마지막 메시지인지 확인
-                  const isLastInGroup = !nextMessage || nextMessage.senderId !== msg.senderId;
-
-                  const showSenderName = isFirstInGroup;
-
-                  return (
-                    <ChatMessage
-                      key={msg.id}
-                      message={msg}
-                      currentUserId={CURRENT_USER.id}
-                      showSenderName={showSenderName}
-                      isLastMessage={isLastInGroup}
-                      allUsers={testUsers}
-                      hoveredMessage={hoveredMessage}
-                      setHoveredMessage={setHoveredMessage}
-                    />
-                  );
-                })}
-                <div ref={messagesEndRef} />
-              </div>
-            </div>
-
-            <form onSubmit={handleSendMessage} className={styles.chatInput}>
-              <button type="button" className={styles.iconButton} onClick={() => setFileModalStatus(!fileModalStatus)}>
-                <FiPlus size={20} color="#666" />
-              </button>
-
-              <input
-                ref={inputRef}
-                type="text"
-                value={message}
-                onChange={handleInputChange}
-                onKeyPress={handleKeyPress}
-                placeholder="메시지를 입력하세요"
-                className={styles.messageInput}
-                disabled={!isConnected}
+            {showPayment ? (
+              // Payment 컴포넌트 표시
+              <PaymentModal
+                setModal={() => setShowPayment(false)}
+                roomType={{
+                  id: "starbucks", // 또는 "megacoffee"
+                  name: "Standard Room",
+                  price: "4841원",
+                  description: "스타벅스 아이스 아메리카노 1잔",
+                  icon: "/starbucks.png",
+                  iconClass: "starbucksIcon",
+                }}
+                memberCount={testUsers.length}
+                onPaymentComplete={handlePaymentComplete}
               />
+            ) : (
+              // 기존 채팅 UI
+              <>
+                <div className={styles.chatMain}>
+                  <div ref={messagesContainerRef} className={styles.messagesContainer}>
+                    {messages.map((msg, index) => {
+                      const prevMessage = index > 0 ? messages[index - 1] : null;
+                      const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
 
-              <div className={styles.inputIcons}>
-                <button
-                  type="submit"
-                  className={`${styles.iconButton} ${message.trim() ? styles.sendActive : ""}`}
-                  disabled={!message.trim() || !isConnected}
-                >
-                  <FiSend size={20} color={message.trim() ? "#3F3FD4" : "#666"} />
-                </button>
-              </div>
-            </form>
+                      const isFirstInGroup = !prevMessage || prevMessage.senderId !== msg.senderId;
+                      const isLastInGroup = !nextMessage || nextMessage.senderId !== msg.senderId;
+                      const showSenderName = isFirstInGroup;
+
+                      return (
+                        <ChatMessage
+                          key={msg.id}
+                          message={msg}
+                          currentUserId={CURRENT_USER.id}
+                          showSenderName={showSenderName}
+                          isLastMessage={isLastInGroup}
+                          allUsers={testUsers}
+                          hoveredMessage={hoveredMessage}
+                          setHoveredMessage={setHoveredMessage}
+                        />
+                      );
+                    })}
+                    <div ref={messagesEndRef} />
+                  </div>
+                </div>
+
+                <form onSubmit={handleSendMessage} className={styles.chatInput}>
+                  <button
+                    type="button"
+                    className={styles.iconButton}
+                    onClick={() => setFileModalStatus(!fileModalStatus)}
+                  >
+                    <FiPlus size={20} color="#666" />
+                  </button>
+
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={message}
+                    onChange={handleInputChange}
+                    onKeyPress={handleKeyPress}
+                    placeholder="메시지를 입력하세요"
+                    className={styles.messageInput}
+                    disabled={!isConnected}
+                  />
+
+                  <div className={styles.inputIcons}>
+                    <button
+                      type="submit"
+                      className={`${styles.iconButton} ${message.trim() ? styles.sendActive : ""}`}
+                      disabled={!message.trim() || !isConnected}
+                    >
+                      <FiSend size={20} color={message.trim() ? "#3F3FD4" : "#666"} />
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
           </div>
         </div>
 
