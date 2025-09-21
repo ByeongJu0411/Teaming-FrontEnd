@@ -31,20 +31,26 @@ const handler = NextAuth({
     async jwt({ token, account, profile }) {
       console.log("=== JWT CALLBACK START ===");
       console.log("Account:", account ? `${account.provider} - ${account.type}` : "없음");
-      console.log("Access Token 존재:", !!account?.access_token);
 
       if (account) {
+        console.log("OAuth Account 정보:", {
+          provider: account.provider,
+          type: account.type,
+          access_token: account.access_token ? "존재" : "없음",
+          // OAuth code는 NextAuth가 이미 처리해서 account에 없을 수 있음
+        });
+
         try {
           let endpoint = "";
           switch (account.provider) {
             case "google":
-              endpoint = "/api/auth/google";
+              endpoint = "/api/auth/web/google"; // 스웨거에 맞춘 경로
               break;
             case "kakao":
-              endpoint = "/api/auth/kakao";
+              endpoint = "/api/auth/web/kakao"; // 스웨거에 맞춘 경로
               break;
             case "naver":
-              endpoint = "/api/auth/naver";
+              endpoint = "/api/auth/web/naver"; // 스웨거에 맞춘 경로
               break;
             default:
               console.error("지원하지 않는 제공자:", account.provider);
@@ -55,7 +61,15 @@ const handler = NextAuth({
           const fullUrl = `${backendUrl}${endpoint}`;
 
           console.log("백엔드 요청 URL:", fullUrl);
-          console.log("요청 데이터:", { accessToken: account.access_token?.substring(0, 20) + "..." });
+
+          // 스웨거 문서에 맞춘 요청 Body (필드명 수정)
+          const requestBody = {
+            accessToken: account.access_token, // 언더스코어 사용
+          };
+
+          console.log("요청 데이터:", {
+            accessToken: account.access_token?.substring(0, 20) + "...",
+          });
 
           const response = await fetch(fullUrl, {
             method: "POST",
@@ -63,9 +77,7 @@ const handler = NextAuth({
               "Content-Type": "application/json",
               Accept: "application/json",
             },
-            body: JSON.stringify({
-              accessToken: account.access_token,
-            }),
+            body: JSON.stringify(requestBody),
           });
 
           console.log("백엔드 응답 상태:", response.status);
@@ -95,12 +107,23 @@ const handler = NextAuth({
           } else {
             console.error(`백엔드 API 실패 (${response.status}):`, responseText);
 
-            if (response.status === 404) {
-              console.error("API 엔드포인트를 찾을 수 없습니다. 백엔드 서버 확인 필요");
-            } else if (response.status === 500) {
-              console.error("백엔드 서버 내부 오류");
-            } else if (response.status === 401) {
-              console.error("인증 토큰이 유효하지 않습니다");
+            // 상태 코드별 상세 로깅
+            switch (response.status) {
+              case 400:
+                console.error("잘못된 요청 - 요청 Body 형식을 확인하세요");
+                console.error("현재 요청:", JSON.stringify(requestBody, null, 2));
+                break;
+              case 401:
+                console.error("인증 실패 - accessToken이 유효하지 않습니다");
+                break;
+              case 404:
+                console.error("API 엔드포인트를 찾을 수 없습니다:", fullUrl);
+                break;
+              case 500:
+                console.error("백엔드 서버 내부 오류");
+                break;
+              default:
+                console.error("알 수 없는 오류");
             }
 
             token.provider = account.provider;
@@ -140,7 +163,16 @@ const handler = NextAuth({
       session.isBackendAuthenticated = !!token.backendAccessToken && !token.backendError;
 
       if (token.backendError) {
-        session.backendError = {
+        const sessionWithError = session as typeof session & {
+          backendError?: {
+            hasError: boolean;
+            status: number;
+            message: string;
+            isNetworkError: boolean;
+          };
+        };
+
+        sessionWithError.backendError = {
           hasError: true,
           status: token.backendErrorStatus as number,
           message: token.backendErrorMessage as string,
@@ -150,7 +182,7 @@ const handler = NextAuth({
 
       console.log("세션 생성 완료:", {
         isBackendAuthenticated: session.isBackendAuthenticated,
-        hasBackendError: !!session.backendError,
+        hasBackendError: !!token.backendError,
         provider: session.provider,
       });
 
