@@ -16,6 +16,7 @@ export default function MainPage(): JSX.Element {
   const [selectedRoom, setSelectedRoom] = useState<{ id: string; name: string; lastChat: string } | null>(null);
   const [backendAuthAttempted, setBackendAuthAttempted] = useState<boolean>(false);
   const [canProceedWithoutBackend, setCanProceedWithoutBackend] = useState<boolean>(false);
+  const [refreshRooms, setRefreshRooms] = useState<number>(0); // 채팅방 목록 새로고침 트리거
 
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -84,6 +85,12 @@ export default function MainPage(): JSX.Element {
     setSelectedMenu(null);
   };
 
+  // 채팅방 목록 새로고침 함수 추가
+  const handleRoomsRefresh = (): void => {
+    console.log("ActionBar 새로고침 요청");
+    setRefreshRooms((prev) => prev + 1);
+  };
+
   const renderContent = (): JSX.Element | null => {
     if (selectedRoom) {
       return <ChatRoom roomData={selectedRoom} />;
@@ -93,7 +100,7 @@ export default function MainPage(): JSX.Element {
       case "티밍룸 생성":
         return <CreateRoom />;
       case "티밍룸 찾기":
-        return <FindRoom />;
+        return <FindRoom onRoomJoined={handleRoomsRefresh} />;
       case "마이페이지":
         return <MyPage />;
       default:
