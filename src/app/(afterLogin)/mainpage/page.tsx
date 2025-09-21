@@ -16,6 +16,7 @@ export default function MainPage(): JSX.Element {
   const [selectedRoom, setSelectedRoom] = useState<{ id: string; name: string; lastChat: string } | null>(null);
   const [backendAuthAttempted, setBackendAuthAttempted] = useState<boolean>(false);
   const [canProceedWithoutBackend, setCanProceedWithoutBackend] = useState<boolean>(false);
+
   const { data: session, status } = useSession();
   const router = useRouter();
   const hasRedirected = useRef(false);

@@ -14,43 +14,83 @@ const handler = NextAuth({
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      // Google은 기본적으로 name, email, image를 제대로 제공
     }),
     KakaoProvider({
       clientId: process.env.KAKAO_CLIENT_ID!,
       clientSecret: process.env.KAKAO_CLIENT_SECRET!,
+      // 카카오 사용자 정보 표준화
+      profile(profile) {
+        console.log("Kakao Profile:", profile);
+        return {
+          id: profile.id.toString(),
+          name: profile.properties?.nickname || profile.kakao_account?.profile?.nickname || "카카오 사용자",
+          email: profile.kakao_account?.email || "",
+          image: profile.properties?.profile_image || profile.kakao_account?.profile?.profile_image_url || "",
+        };
+      },
     }),
     NaverProvider({
       clientId: process.env.NAVER_CLIENT_ID!,
       clientSecret: process.env.NAVER_CLIENT_SECRET!,
+      // 네이버 사용자 정보 표준화
+      profile(profile) {
+        console.log("Naver Profile:", profile);
+        return {
+          id: profile.response.id,
+          name: profile.response.name || profile.response.nickname || "네이버 사용자",
+          email: profile.response.email || "",
+          image: profile.response.profile_image || "",
+        };
+      },
     }),
   ],
 
   debug: true,
 
   callbacks: {
-    async jwt({ token, account, profile }) {
+    async signIn({ user, account, profile }) {
+      console.log("=== SIGNIN CALLBACK ===");
+      console.log("Provider:", account?.provider);
+      console.log("User:", {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      });
+      console.log("Original Profile:", profile);
+      return true;
+    },
+
+    async jwt({ token, account, profile, user }) {
       console.log("=== JWT CALLBACK START ===");
       console.log("Account:", account ? `${account.provider} - ${account.type}` : "없음");
+
+      // 초기 로그인 시 사용자 정보 저장
+      if (user) {
+        token.id = user.id;
+        token.name = user.name;
+        token.email = user.email;
+        token.image = user.image;
+      }
 
       if (account) {
         console.log("OAuth Account 정보:", {
           provider: account.provider,
           type: account.type,
           access_token: account.access_token ? "존재" : "없음",
-          // OAuth code는 NextAuth가 이미 처리해서 account에 없을 수 있음
         });
 
         try {
           let endpoint = "";
           switch (account.provider) {
             case "google":
-              endpoint = "/api/auth/web/google"; // 스웨거에 맞춘 경로
+              endpoint = "/api/auth/web/google";
               break;
             case "kakao":
-              endpoint = "/api/auth/web/kakao"; // 스웨거에 맞춘 경로
+              endpoint = "/api/auth/web/kakao";
               break;
             case "naver":
-              endpoint = "/api/auth/web/naver"; // 스웨거에 맞춘 경로
+              endpoint = "/api/auth/web/naver";
               break;
             default:
               console.error("지원하지 않는 제공자:", account.provider);
@@ -62,9 +102,8 @@ const handler = NextAuth({
 
           console.log("백엔드 요청 URL:", fullUrl);
 
-          // 스웨거 문서에 맞춘 요청 Body (필드명 수정)
           const requestBody = {
-            accessToken: account.access_token, // 언더스코어 사용
+            accessToken: account.access_token,
           };
 
           console.log("요청 데이터:", {
@@ -107,7 +146,6 @@ const handler = NextAuth({
           } else {
             console.error(`백엔드 API 실패 (${response.status}):`, responseText);
 
-            // 상태 코드별 상세 로깅
             switch (response.status) {
               case 400:
                 console.error("잘못된 요청 - 요청 Body 형식을 확인하세요");
@@ -149,6 +187,7 @@ const handler = NextAuth({
         hasBackendToken: !!token.backendAccessToken,
         hasError: !!token.backendError,
         provider: token.provider,
+        userName: token.name, // 사용자 이름 확인용
       });
 
       return token;
@@ -156,6 +195,12 @@ const handler = NextAuth({
 
     async session({ session, token }) {
       console.log("=== SESSION CALLBACK ===");
+
+      // 사용자 정보 세션에 추가
+      if (token.name) session.user.name = token.name as string;
+      if (token.email) session.user.email = token.email as string;
+      if (token.image) session.user.image = token.image as string;
+      if (token.id) session.user.id = token.id as string;
 
       session.accessToken = token.backendAccessToken as string;
       session.refreshToken = token.backendRefreshToken as string;
@@ -184,6 +229,7 @@ const handler = NextAuth({
         isBackendAuthenticated: session.isBackendAuthenticated,
         hasBackendError: !!token.backendError,
         provider: session.provider,
+        userName: session.user.name, // 사용자 이름 확인용
       });
 
       return session;
