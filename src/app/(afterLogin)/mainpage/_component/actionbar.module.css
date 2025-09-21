@@ -140,3 +140,125 @@
 .roomItem {
   cursor: pointer;
 }
+
+/* actionbar.module.css에 추가할 스타일들 */
+
+/* 로딩 메시지 개선 */
+.loadingMessage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: #6b7280;
+  font-size: 14px;
+  gap: 8px;
+}
+
+.loadingSpinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e5e7eb;
+  border-top: 2px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* 에러 메시지 스타일 */
+.errorMessage {
+  padding: 16px;
+  text-align: center;
+  color: #f7f7f7;
+  border-radius: 8px;
+  margin: 8px;
+}
+
+.errorMessage p {
+  margin: 0 0 12px 0;
+  font-size: 13px;
+}
+
+.retryButton {
+  background-color: #6b7280;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+/* 빈 메시지 스타일 */
+.emptyMessage {
+  padding: 24px 16px;
+  text-align: center;
+  color: #6b7280;
+}
+
+.emptyMessage p {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+}
+
+.emptySubtext {
+  font-size: 12px !important;
+  opacity: 0.7;
+}
+
+/* 채팅방 아이템 개선 */
+.roomHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.roomDetails {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.unreadBadge {
+  background-color: #ef4444;
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 16px;
+  text-align: center;
+}
+
+.memberCount {
+  font-size: 11px;
+  color: #6b7280;
+  margin-left: 8px;
+}
+
+.lastChat {
+  flex: 1;
+  margin: 0;
+  font-size: 12px;
+  color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 애니메이션 */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 호버 효과 개선 */
+.roomItem:hover {
+  background-color: #f3f4f6;
+  transform: translateY(-1px);
+  transition: all 0.2s ease;
+}
