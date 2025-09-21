@@ -32,7 +32,7 @@
   gap: 12px;
 }
 
-.userImg {
+.profileImage {
   height: 100%; /* 부모(userInfo)의 전체 높이 */
   aspect-ratio: 1;
   border-radius: 50%; /* 원형 프로필 이미지를 원한다면 */
