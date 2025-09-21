@@ -4,7 +4,6 @@ import GoogleProvider from "next-auth/providers/google";
 import KakaoProvider from "next-auth/providers/kakao";
 import NaverProvider from "next-auth/providers/naver";
 
-// 백엔드 JWT 응답 타입 정의
 interface BackendJWTResponse {
   accessToken: string;
   refreshToken: string;
@@ -25,12 +24,17 @@ const handler = NextAuth({
       clientSecret: process.env.NAVER_CLIENT_SECRET!,
     }),
   ],
+
+  debug: true,
+
   callbacks: {
     async jwt({ token, account, profile }) {
-      // 🔄 소셜 로그인 직후에 백엔드 JWT 발급받기
+      console.log("=== JWT CALLBACK START ===");
+      console.log("Account:", account ? `${account.provider} - ${account.type}` : "없음");
+      console.log("Access Token 존재:", !!account?.access_token);
+
       if (account) {
         try {
-          // 🎯 제공자별로 올바른 엔드포인트 호출 (스웨거 기준)
           let endpoint = "";
           switch (account.provider) {
             case "google":
@@ -43,123 +47,120 @@ const handler = NextAuth({
               endpoint = "/api/auth/naver";
               break;
             default:
-              throw new Error(`지원하지 않는 제공자: ${account.provider}`);
+              console.error("지원하지 않는 제공자:", account.provider);
+              return token;
           }
 
-          console.log(`백엔드 ${account.provider} 인증 시도:`, endpoint);
+          const backendUrl = process.env.BACKEND_URL || "http://13.125.193.243:8080";
+          const fullUrl = `${backendUrl}${endpoint}`;
 
-          const response = await fetch(`${process.env.BACKEND_URL}${endpoint}`, {
+          console.log("백엔드 요청 URL:", fullUrl);
+          console.log("요청 데이터:", { accessToken: account.access_token?.substring(0, 20) + "..." });
+
+          const response = await fetch(fullUrl, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              Accept: "application/json",
             },
             body: JSON.stringify({
-              accessToken: account.access_token, // 소셜 플랫폼에서 받은 액세스 토큰
+              accessToken: account.access_token,
             }),
           });
 
+          console.log("백엔드 응답 상태:", response.status);
+          console.log("백엔드 응답 헤더:", Object.fromEntries(response.headers.entries()));
+
+          const responseText = await response.text();
+          console.log("백엔드 응답 내용:", responseText);
+
           if (response.ok) {
-            const backendTokens: BackendJWTResponse = await response.json();
-            console.log(`${account.provider} 백엔드 JWT 발급 성공`);
+            try {
+              const backendTokens: BackendJWTResponse = JSON.parse(responseText);
+              console.log("백엔드 JWT 파싱 성공");
+              console.log("Access Token 길이:", backendTokens.accessToken?.length);
+              console.log("Refresh Token 길이:", backendTokens.refreshToken?.length);
 
-            // 🔑 백엔드 JWT를 NextAuth 토큰에 저장
-            token.backendAccessToken = backendTokens.accessToken;
-            token.backendRefreshToken = backendTokens.refreshToken;
-            token.provider = account.provider;
+              token.backendAccessToken = backendTokens.accessToken;
+              token.backendRefreshToken = backendTokens.refreshToken;
+              token.provider = account.provider;
+              token.backendError = false;
 
-            // 디버깅용 (프로덕션에서는 제거)
-            console.log("Backend Access Token:", backendTokens.accessToken?.substring(0, 20) + "...");
+              console.log("백엔드 토큰 저장 완료");
+            } catch (parseError) {
+              console.error("JSON 파싱 실패:", parseError);
+              console.error("응답 내용:", responseText);
+              token.backendError = true;
+            }
           } else {
-            const errorText = await response.text();
-            console.error(`백엔드 JWT 발급 실패 (${response.status}):`, errorText);
-            throw new Error(`백엔드 인증 실패: ${response.status}`);
+            console.error(`백엔드 API 실패 (${response.status}):`, responseText);
+
+            if (response.status === 404) {
+              console.error("API 엔드포인트를 찾을 수 없습니다. 백엔드 서버 확인 필요");
+            } else if (response.status === 500) {
+              console.error("백엔드 서버 내부 오류");
+            } else if (response.status === 401) {
+              console.error("인증 토큰이 유효하지 않습니다");
+            }
+
+            token.provider = account.provider;
+            token.backendError = true;
+            token.backendErrorStatus = response.status;
+            token.backendErrorMessage = responseText;
           }
         } catch (error) {
-          console.error("백엔드 연동 오류:", error);
-          // 에러가 발생해도 NextAuth 로그인은 계속 진행
-          // 필요에 따라 여기서 로그인을 중단하고 싶다면 throw error; 사용
+          console.error("백엔드 API 호출 중 네트워크 오류:", error);
+
+          if (error instanceof TypeError && error.message.includes("fetch")) {
+            console.error("네트워크 연결 실패 - 백엔드 서버가 실행 중인지 확인하세요");
+          }
+
+          token.provider = account.provider;
+          token.backendError = true;
+          token.networkError = true;
         }
       }
 
-      // 🔄 토큰 갱신 로직 (선택사항)
-      if (token.backendRefreshToken && isTokenExpired(token.backendAccessToken)) {
-        try {
-          const refreshedTokens = await refreshBackendToken(token.backendRefreshToken as string);
-          token.backendAccessToken = refreshedTokens.accessToken;
-          token.backendRefreshToken = refreshedTokens.refreshToken;
-        } catch (error) {
-          console.error("토큰 갱신 실패:", error);
-          // 갱신 실패 시 기존 토큰 제거
-          delete token.backendAccessToken;
-          delete token.backendRefreshToken;
-        }
-      }
+      console.log("=== JWT CALLBACK END ===");
+      console.log("최종 토큰 상태:", {
+        hasBackendToken: !!token.backendAccessToken,
+        hasError: !!token.backendError,
+        provider: token.provider,
+      });
 
       return token;
     },
 
     async session({ session, token }) {
-      // 🎯 백엔드 JWT를 세션에 제공
+      console.log("=== SESSION CALLBACK ===");
+
       session.accessToken = token.backendAccessToken as string;
       session.refreshToken = token.backendRefreshToken as string;
       session.provider = token.provider as string;
+      session.isBackendAuthenticated = !!token.backendAccessToken && !token.backendError;
 
-      // 백엔드 토큰이 있는지 확인
-      session.isBackendAuthenticated = !!token.backendAccessToken;
+      if (token.backendError) {
+        session.backendError = {
+          hasError: true,
+          status: token.backendErrorStatus as number,
+          message: token.backendErrorMessage as string,
+          isNetworkError: !!token.networkError,
+        };
+      }
+
+      console.log("세션 생성 완료:", {
+        isBackendAuthenticated: session.isBackendAuthenticated,
+        hasBackendError: !!session.backendError,
+        provider: session.provider,
+      });
 
       return session;
     },
-
-    // 🛡️ 로그인 성공 여부 제어 (선택사항)
-    async signIn({ user, account, profile, email, credentials }) {
-      // 모든 소셜 로그인 허용
-      // 백엔드 연동 실패 시에도 NextAuth 로그인은 허용
-      return true;
-    },
   },
 
-  // 🔧 NextAuth 설정
   session: {
-    strategy: "jwt", // JWT 전략 사용
-  },
-
-  // 🎨 커스텀 페이지 (선택사항)
-  pages: {
-    signIn: "/auth/signin", // 커스텀 로그인 페이지
-    error: "/auth/error", // 에러 페이지
+    strategy: "jwt",
   },
 });
-
-// 🔄 토큰 만료 확인 함수
-function isTokenExpired(token: string | undefined): boolean {
-  if (!token) return true;
-
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    const currentTime = Math.floor(Date.now() / 1000);
-    return payload.exp < currentTime;
-  } catch {
-    return true;
-  }
-}
-
-// 🔄 백엔드 토큰 갱신 함수
-async function refreshBackendToken(refreshToken: string): Promise<BackendJWTResponse> {
-  const response = await fetch(`${process.env.BACKEND_URL}/api/auth/refresh`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      refreshToken: refreshToken,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`토큰 갱신 실패: ${response.status}`);
-  }
-
-  return response.json();
-}
 
 export { handler as GET, handler as POST };
