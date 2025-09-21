@@ -12,6 +12,7 @@ declare module "next-auth" {
 
     // 🆔 소셜 플랫폼에서의 사용자 고유 ID
     providerAccountId?: string;
+    isBackendAuthenticated?: boolean;
   }
 }
 
