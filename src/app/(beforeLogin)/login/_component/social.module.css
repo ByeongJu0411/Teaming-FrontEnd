@@ -82,3 +82,63 @@
   text-align: center;
   padding: 20px;
 }
+
+/* social.module.css에 추가할 스타일들 */
+
+/* 로딩 메시지 스타일 */
+.loading_message {
+  text-align: center;
+  padding: 1rem;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+/* 성공 메시지 스타일 */
+.success_message {
+  text-align: center;
+  padding: 1rem;
+  color: #10b981;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* 로딩 텍스트 스타일 */
+.loading_text {
+  text-align: center;
+  margin-top: 0.5rem;
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+/* 기존 loading_spinner 스타일 개선 */
+.loading_spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 버튼 비활성화 상태 스타일 */
+.social_button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* 호버 효과 개선 */
+.social_button:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+}
