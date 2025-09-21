@@ -118,7 +118,7 @@
 
 .roomName {
   color: #f7f7f7;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .lastChat {
@@ -210,6 +210,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 5rem;
   margin-bottom: 4px;
 }
 
@@ -217,23 +218,6 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.unreadBadge {
-  background-color: #ef4444;
-  color: white;
-  font-size: 10px;
-  font-weight: bold;
-  padding: 2px 6px;
-  border-radius: 10px;
-  min-width: 16px;
-  text-align: center;
-}
-
-.memberCount {
-  font-size: 11px;
-  color: #6b7280;
-  margin-left: 8px;
 }
 
 .lastChat {
@@ -258,7 +242,10 @@
 
 /* 호버 효과 개선 */
 .roomItem:hover {
-  background-color: #f3f4f6;
+  background-color: #f3f3f3;
   transform: translateY(-1px);
   transition: all 0.2s ease;
+}
+.roomItem:hover .roomName {
+  color: #000; /* 검은색으로 변경 */
 }

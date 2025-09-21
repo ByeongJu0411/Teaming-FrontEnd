@@ -535,6 +535,198 @@
   box-shadow: 0 6px 20px rgba(96, 150, 255, 0.4);
 }
 
+.createBtnUpdated:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 로딩 애니메이션 */
+.loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.loadingSpinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 모달 스타일 */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modalContent {
+  background-color: #121216;
+  border: 1px solid #292929;
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 500px;
+  width: 90%;
+  color: #f7f7f7;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.modalTitle {
+  font-size: 24px;
+  font-weight: bold;
+  color: #6096ff;
+  margin: 0;
+}
+
+.modalCloseBtn {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.modalCloseBtn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #f7f7f7;
+}
+
+.inviteLinkSection {
+  background-color: #252530;
+  border: 1px solid #292929;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.inviteLinkTitle {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #f7f7f7;
+}
+
+.inviteLinkBox {
+  background-color: #121216;
+  border: 1px solid #292929;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 14px;
+  color: #f7f7f7;
+  word-break: break-all;
+  margin-bottom: 16px;
+  font-family: "Courier New", monospace;
+}
+
+.inviteCodeInfo {
+  font-size: 14px;
+  color: #999;
+  margin-bottom: 16px;
+}
+
+.inviteCodeHighlight {
+  color: #6096ff;
+  font-weight: bold;
+}
+
+.modalButtonGroup {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.modalButton {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #6096ff 0%, #4a7fff 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex: 1;
+  min-width: 120px;
+}
+
+.modalButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(96, 150, 255, 0.4);
+}
+
+.kakaoButton {
+  background: #fee500;
+  color: #3c1e1e;
+}
+
+.kakaoButton:hover {
+  background: #fdd700;
+  box-shadow: 0 4px 12px rgba(254, 229, 0, 0.4);
+}
+
+.modalNotice {
+  margin-top: 20px;
+  padding: 16px;
+  background-color: #2a2a2a;
+  border-radius: 8px;
+  border-left: 4px solid #6096ff;
+}
+
+.modalNoticeText {
+  font-size: 14px;
+  color: #f7f7f7;
+  margin: 0;
+  line-height: 1.4;
+}
+
 /* 반응형 디자인 */
 @media (max-width: 768px) {
   .container {
@@ -604,5 +796,20 @@
 
   .profileImageInfo {
     font-size: 11px;
+  }
+
+  /* 모바일에서 모달 조정 */
+  .modalContent {
+    padding: 24px;
+    margin: 16px;
+  }
+
+  .modalButtonGroup {
+    flex-direction: column;
+  }
+
+  .modalButton {
+    flex: none;
+    width: 100%;
   }
 }

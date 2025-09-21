@@ -92,15 +92,23 @@ export default function ActionBar({ onMenuSelect, onRoomSelect, selectedRoom }: 
       setLoading(true);
       setError(null);
 
-      // 세션에서 JWT 토큰 가져오기 (정의된 타입에 맞춰)
+      // 세션에서 JWT 토큰 가져오기
       const token = session?.accessToken;
 
+      // 토큰 상태 상세 로깅
+      console.log("ActionBar: 전체 세션 정보:", session);
+      console.log("ActionBar: 토큰 존재 여부:", !!token);
+      console.log("ActionBar: 토큰 길이:", token?.length);
+      console.log("ActionBar: 백엔드 인증 상태:", session?.isBackendAuthenticated);
+
       if (!token) {
+        console.error("ActionBar: 토큰이 없음");
         throw new Error("인증 토큰이 없습니다. 로그인이 필요합니다.");
       }
 
       // 백엔드 인증 상태 확인
       if (!session?.isBackendAuthenticated) {
+        console.error("ActionBar: 백엔드 인증되지 않음");
         if (session?.backendError?.hasError) {
           throw new Error(session.backendError.message || "백엔드 인증에 실패했습니다.");
         } else {
@@ -108,40 +116,70 @@ export default function ActionBar({ onMenuSelect, onRoomSelect, selectedRoom }: 
         }
       }
 
+      console.log("ActionBar: 요청 시작");
+      console.log("ActionBar: URL:", `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080"}/rooms`);
+      console.log("ActionBar: Token exists:", !!token);
+
+      // 스웨거 스펙에 맞게 헤더 최소화
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080"}/rooms`, {
         method: "GET",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          // Content-Type 제거 - GET 요청에는 필요없음
         },
       });
 
+      console.log("ActionBar: Response status:", response.status);
+      console.log("ActionBar: Response headers:", Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
-        if (response.status === 401) {
+        const errorText = await response.text();
+        console.error("ActionBar: Error response:", errorText);
+
+        if (response.status === 400) {
+          throw new Error(`잘못된 요청입니다: ${errorText}`);
+        } else if (response.status === 401) {
           throw new Error("인증이 만료되었습니다. 다시 로그인해주세요.");
         } else if (response.status === 403) {
-          throw new Error("접근 권한이 없습니다.");
+          throw new Error(`접근 권한이 없습니다: ${errorText}`);
         } else {
-          throw new Error(`서버 오류가 발생했습니다. (${response.status})`);
+          throw new Error(`서버 오류가 발생했습니다. (${response.status}): ${errorText}`);
         }
       }
 
-      const data: RoomData[] = await response.json();
+      const responseText = await response.text();
+      console.log("ActionBar: Raw response:", responseText);
 
-      // API 응답을 기존 Room 타입으로 변환
+      let data: RoomData[];
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("ActionBar: JSON parse error:", parseError);
+        throw new Error("서버 응답을 파싱할 수 없습니다.");
+      }
+
+      console.log("ActionBar: Parsed data:", data);
+
+      // 배열 확인
+      if (!Array.isArray(data)) {
+        console.error("ActionBar: Response is not an array:", typeof data);
+        throw new Error("서버 응답이 배열 형식이 아닙니다.");
+      }
+
+      // 안전한 데이터 변환
       const convertedRooms: Room[] = data.map((room) => ({
-        id: room.roomId.toString(),
-        name: room.title,
+        id: room.roomId?.toString() || "0",
+        name: room.title || "제목 없음",
         lastChat: room.lastMessage?.content || "메시지가 없습니다",
-        unreadCount: room.unreadCount,
-        memberCount: room.memberCount,
+        unreadCount: room.unreadCount || 0,
+        memberCount: room.memberCount || 0,
       }));
 
+      console.log("ActionBar: Converted rooms:", convertedRooms);
       setRooms(convertedRooms);
     } catch (err) {
-      console.error("채팅방 목록을 가져오는데 실패했습니다:", err);
-      setError("채팅방 목록을 불러올 수 없습니다");
-      // 에러 발생시 빈 배열로 설정
+      console.error("ActionBar: 채팅방 목록을 가져오는데 실패했습니다:", err);
+      setError(err instanceof Error ? err.message : "채팅방 목록을 불러올 수 없습니다");
       setRooms([]);
     } finally {
       setLoading(false);
@@ -233,13 +271,9 @@ export default function ActionBar({ onMenuSelect, onRoomSelect, selectedRoom }: 
               <div className={styles.roomInfo}>
                 <div className={styles.roomHeader}>
                   <p className={styles.roomName}>{room.name}</p>
-                  {room.unreadCount && room.unreadCount > 0 && (
-                    <span className={styles.unreadBadge}>{room.unreadCount}</span>
-                  )}
                 </div>
                 <div className={styles.roomDetails}>
                   <p className={styles.lastChat}>{room.lastChat}</p>
-                  {room.memberCount && <span className={styles.memberCount}>👥 {room.memberCount}</span>}
                 </div>
               </div>
             </div>
