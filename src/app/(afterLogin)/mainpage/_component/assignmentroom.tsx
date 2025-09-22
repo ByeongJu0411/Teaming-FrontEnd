@@ -9,8 +9,10 @@ import ViewSubmissionModal from "./_assignment/ViewSubmissionModal";
 
 interface ModalProps {
   setModal: () => void;
+  roomId?: string;
 }
 
+// 컴포넌트에서 사용할 타입
 interface Assignment {
   id: string;
   title: string;
@@ -36,52 +38,6 @@ interface Assignment {
   }[];
 }
 
-// 테스트용 과제 데이터
-const testAssignments: Assignment[] = [
-  {
-    id: "1",
-    title: "자료조사 2장 과제부여",
-    description:
-      "자료조사를 하셨다면 한 장정도 과제를 부여합니다.\n과제시간에 맞춰서 과제 제출해주시면 감사하겠습니다.",
-    creator: "팀장 최순조",
-    assignedMembers: ["1", "2", "3"],
-    dueDate: "2024-09-20T15:00:00Z",
-    status: "진행중",
-    createdAt: "2024-09-15T10:00:00Z",
-    submissions: [
-      {
-        memberId: "1",
-        memberName: "권민석",
-        status: "제출완료",
-        submittedAt: "2024-09-18T14:30:00Z",
-        submissionData: {
-          text: "자료조사를 완료했습니다. 첨부된 문서에 상세한 내용이 정리되어 있으니 확인 부탁드립니다.",
-          files: [
-            { name: "자료조사_보고서.pdf", size: 2048576 },
-            { name: "참고자료.docx", size: 1024000 },
-          ],
-        },
-      },
-      { memberId: "2", memberName: "정치학 존잘남", status: "대기" },
-      { memberId: "3", memberName: "팀플하기싫다", status: "대기" },
-    ],
-  },
-  {
-    id: "2",
-    title: "프레젠테이션 자료 준비",
-    description: "다음 주 발표를 위한 PPT 자료를 준비해주세요.\n각자 담당 파트에 대해 10분 분량으로 작성하시면 됩니다.",
-    creator: "팀장 최순조",
-    assignedMembers: ["1", "2"],
-    dueDate: "2024-09-25T18:00:00Z",
-    status: "진행중",
-    createdAt: "2024-09-16T09:00:00Z",
-    submissions: [
-      { memberId: "1", memberName: "권민석", status: "대기" },
-      { memberId: "2", memberName: "정치학 존잘남", status: "대기" },
-    ],
-  },
-];
-
 // 테스트용 팀원 데이터
 const testMembers = [
   { id: "1", name: "권민석", avatar: "🐱" },
@@ -89,9 +45,8 @@ const testMembers = [
   { id: "3", name: "팀플하기싫다", avatar: "😩" },
 ];
 
-const AssignmentRoom = ({ setModal }: ModalProps) => {
+const AssignmentRoom = ({ setModal, roomId }: ModalProps) => {
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
-  const [assignments, setAssignments] = useState<Assignment[]>(testAssignments);
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingSubmission, setViewingSubmission] = useState<Assignment["submissions"][0] | null>(null);
@@ -102,78 +57,27 @@ const AssignmentRoom = ({ setModal }: ModalProps) => {
     event.stopPropagation();
   };
 
-  const handleSubmitAssignment = (data: { text: string; files: File[] }) => {
+  // 과제 제출 처리 (임시 - 실제로는 API 호출 필요)
+  const handleSubmitAssignment = async (data: { text: string; files: File[] }) => {
     if (!selectedAssignment) return;
 
-    // 과제 제출 로직
-    const submissionData = {
-      assignmentId: selectedAssignment.id,
-      text: data.text,
-      files: data.files,
-      submittedAt: new Date().toISOString(),
-    };
+    try {
+      // 여기에 과제 제출 API 호출 로직 추가
+      console.log("과제 제출:", {
+        assignmentId: selectedAssignment.id,
+        text: data.text,
+        files: data.files,
+      });
 
-    console.log("과제 제출:", submissionData);
-
-    // 제출 상태 업데이트
-    setAssignments((prev) =>
-      prev.map((assignment) => {
-        if (assignment.id === selectedAssignment.id) {
-          return {
-            ...assignment,
-            submissions: assignment.submissions.map((submission) => {
-              if (submission.memberId === "1") {
-                // 현재 사용자 ID
-                return {
-                  ...submission,
-                  status: "제출완료" as const,
-                  submittedAt: new Date().toISOString(),
-                  submissionData: {
-                    text: data.text,
-                    files: data.files.map((file) => ({
-                      name: file.name,
-                      size: file.size,
-                    })),
-                  },
-                };
-              }
-              return submission;
-            }),
-          };
-        }
-        return assignment;
-      })
-    );
-
-    // 선택된 과제도 업데이트
-    if (selectedAssignment) {
-      const updatedAssignment = {
-        ...selectedAssignment,
-        submissions: selectedAssignment.submissions.map((submission) => {
-          if (submission.memberId === "1") {
-            return {
-              ...submission,
-              status: "제출완료" as const,
-              submittedAt: new Date().toISOString(),
-              submissionData: {
-                text: data.text,
-                files: data.files.map((file) => ({
-                  name: file.name,
-                  size: file.size,
-                })),
-              },
-            };
-          }
-          return submission;
-        }),
-      };
-      setSelectedAssignment(updatedAssignment);
+      // 임시로 로컬 상태 업데이트
+      setShowSubmissionModal(false);
+      setSubmissionText("");
+      setSubmissionFiles([]);
+      alert("과제가 성공적으로 제출되었습니다.");
+    } catch (error) {
+      console.error("Failed to submit assignment:", error);
+      alert("과제 제출에 실패했습니다. 다시 시도해주세요.");
     }
-
-    // 모달 닫기 및 폼 리셋
-    setShowSubmissionModal(false);
-    setSubmissionText("");
-    setSubmissionFiles([]);
   };
 
   const canSubmit = (assignment: Assignment) => {
@@ -206,7 +110,6 @@ const AssignmentRoom = ({ setModal }: ModalProps) => {
   return (
     <div onClick={setModal} className={styles.modalBackground}>
       <div onClick={preventOffModal} className={styles.modal}>
-        {/* 헤더 */}
         <div className={styles.modalHeader}>
           <button onClick={setModal} className={styles.backButton}>
             <IoChevronBack size={24} />
@@ -215,15 +118,14 @@ const AssignmentRoom = ({ setModal }: ModalProps) => {
         </div>
 
         <div className={styles.modalBody}>
-          {/* 과제 목록 */}
+          {/* AssignmentList가 자체적으로 API 호출 */}
           <AssignmentList
-            assignments={assignments}
+            roomId={roomId}
             selectedAssignment={selectedAssignment}
             onAssignmentSelect={handleAssignmentSelect}
             members={testMembers}
           />
 
-          {/* 과제 상세 정보 */}
           <AssignmentDetail
             assignment={selectedAssignment}
             members={testMembers}
@@ -233,7 +135,6 @@ const AssignmentRoom = ({ setModal }: ModalProps) => {
           />
         </div>
 
-        {/* 과제 제출 모달 */}
         {selectedAssignment && (
           <SubmissionModal
             assignment={selectedAssignment}
@@ -247,7 +148,6 @@ const AssignmentRoom = ({ setModal }: ModalProps) => {
           />
         )}
 
-        {/* 제출 내용 확인 모달 */}
         <ViewSubmissionModal
           submission={viewingSubmission}
           isOpen={showViewModal}

@@ -134,6 +134,24 @@
   background: #666;
 }
 
+.loadingMessage,
+.errorMessage,
+.emptyMessage {
+  text-align: center;
+  padding: 2rem;
+  color: #999;
+}
+
+.retryButton {
+  background-color: #3b82f6;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  margin-top: 0.5rem;
+}
+
 /* 반응형 디자인 */
 @media (max-width: 768px) {
   .assignmentList {
