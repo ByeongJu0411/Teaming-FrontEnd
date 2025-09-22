@@ -1,0 +1,239 @@
+/* 오른쪽 상세 정보 */
+.assignmentDetail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.detailHeader {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #333;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #222;
+}
+
+.detailHeader h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #f7f7f7;
+}
+
+.statusBadge {
+  font-size: 11px;
+  font-weight: 500;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.detailContent {
+  flex: 1;
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+.section {
+  margin-bottom: 2rem;
+}
+
+.sectionTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #6096ff;
+  margin-bottom: 1rem;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.submitButton {
+  background-color: #10b981;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.submitButton:hover {
+  background-color: #059669;
+}
+
+.description {
+  background-color: #2a2a2a;
+  border: 1px solid #404040;
+  border-radius: 6px;
+  padding: 1rem;
+  color: #f7f7f7;
+  line-height: 1.5;
+}
+
+.description p {
+  margin: 0;
+  margin-bottom: 0.5rem;
+}
+
+.description p:last-child {
+  margin-bottom: 0;
+}
+
+.assignmentInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.infoItem {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.infoLabel {
+  font-weight: 500;
+  color: #999;
+  min-width: 80px;
+}
+
+.submissionList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.submissionItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background-color: #2a2a2a;
+  border: 1px solid #404040;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.submissionItem.clickable {
+  cursor: pointer;
+}
+
+.submissionItem.clickable:hover {
+  background-color: #333;
+}
+
+.submissionMember {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.memberAvatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  border: 2px solid #1a1a1a;
+}
+
+.memberName {
+  font-weight: 500;
+  color: #f7f7f7;
+}
+
+.submissionStatus {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.submissionDetails {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.clickHint {
+  font-size: 11px;
+  color: #3b82f6;
+  font-weight: 400;
+}
+
+.submittedText {
+  font-size: 12px;
+  color: #10b981;
+  font-weight: 500;
+}
+
+.waitingText {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+/* 빈 상태 */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  color: #666;
+}
+
+.emptyIcon {
+  font-size: 48px;
+  margin-bottom: 1rem;
+}
+
+.emptyState h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 18px;
+  color: #f7f7f7;
+}
+
+.emptyState p {
+  margin: 0;
+  font-size: 14px;
+  color: #999;
+}
+
+/* 스크롤바 스타일링 */
+.detailContent::-webkit-scrollbar {
+  width: 6px;
+}
+
+.detailContent::-webkit-scrollbar-track {
+  background: #2a2a2a;
+  border-radius: 3px;
+}
+
+.detailContent::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 3px;
+}
+
+.detailContent::-webkit-scrollbar-thumb:hover {
+  background: #666;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .assignmentDetail {
+    height: 60%;
+  }
+}

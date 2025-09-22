@@ -85,7 +85,6 @@ export default function ActionBar({ onMenuSelect, onRoomSelect, selectedRoom }: 
 
     return date.toLocaleDateString();
   };
-
   // API에서 채팅방 목록 가져오기
   const fetchRooms = async (): Promise<void> => {
     try {
@@ -165,6 +164,25 @@ export default function ActionBar({ onMenuSelect, onRoomSelect, selectedRoom }: 
         console.error("ActionBar: Response is not an array:", typeof data);
         throw new Error("서버 응답이 배열 형식이 아닙니다.");
       }
+
+      // 멤버 정보 디버깅 추가
+      console.log("ActionBar: 방 목록과 멤버 정보:");
+      data.forEach((room, index) => {
+        console.log(`방 ${index + 1} (ID: ${room.roomId}):`, room.title);
+        console.log(`  - 멤버 수: ${room.memberCount}`);
+        console.log(`  - 멤버 목록:`, room.members);
+
+        if (room.members && room.members.length > 0) {
+          room.members.forEach((member, memberIndex) => {
+            console.log(
+              `    멤버 ${memberIndex + 1}: ID(${member.memberId}), 이름(${member.name}), 역할(${member.roomRole})`
+            );
+          });
+        } else {
+          console.log("    멤버 정보 없음");
+        }
+        console.log("---");
+      });
 
       // 안전한 데이터 변환
       const convertedRooms: Room[] = data.map((room) => ({

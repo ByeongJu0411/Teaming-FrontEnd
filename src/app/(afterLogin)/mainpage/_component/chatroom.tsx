@@ -324,7 +324,14 @@ export default function ChatRoom({ roomData }: ChatRoomProps) {
       {/* 과제 생성하기 모달 */}
       {missionModalStatus && <CreateMission setModal={() => setMissionModalStatus(!missionModalStatus)} />}
       {/* 과제 확인하기 모달 */}
-      {assignmentModalStatus && <AssignmentRoom setModal={() => setAssignmentModalStatus(!assignmentModalStatus)} />}
+      {assignmentModalStatus && (
+        <>
+          {console.log("ChatRoom: roomData 전체:", roomData)}
+          {console.log("ChatRoom: roomData.id 값:", roomData.id)}
+          {console.log("ChatRoom: roomData.id 타입:", typeof roomData.id)}
+          <AssignmentRoom setModal={() => setAssignmentModalStatus(!assignmentModalStatus)} roomId={roomData.id} />
+        </>
+      )}
     </>
   );
 }
