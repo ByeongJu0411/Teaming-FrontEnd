@@ -58,6 +58,7 @@ function getTokenExpiration(token: string): number | null {
  * @param token - 현재 JWT 토큰 객체
  * @returns 갱신된 JWT 토큰 객체
  */
+
 async function refreshAccessToken(token: JWT): Promise<JWT> {
   console.log("=== 토큰 갱신 시작 ===");
 
@@ -70,8 +71,8 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 
     const backendUrl = process.env.BACKEND_URL || "http://13.125.193.243:8080";
 
-    // 백엔드의 토큰 갱신 API 호출
-    const response = await fetch(`${backendUrl}/api/auth/refresh`, {
+    // 명세서에 따른 정확한 요청
+    const response = await fetch(`${backendUrl}/api/auth/token/access-token`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -92,12 +93,17 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
     const refreshedTokens: BackendJWTResponse = await response.json();
     console.log("토큰 갱신 성공");
 
-    // 갱신된 토큰 정보로 JWT 객체 업데이트
+    // 명세서 응답에는 accessToken만 있으므로 refreshToken은 기존 것 유지
+    // expiresIn은 명세서에 없으므로 JWT에서 추출하거나 기본값 사용
+    const tokenExpiration = getTokenExpiration(refreshedTokens.accessToken);
+    const fallbackExpiration = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7일
+
     return {
       ...token,
       backendAccessToken: refreshedTokens.accessToken,
-      backendRefreshToken: refreshedTokens.refreshToken || token.backendRefreshToken,
-      backendTokenExpires: Date.now() + (refreshedTokens.expiresIn || 7 * 24 * 60 * 60) * 1000,
+      // refreshToken은 명세서 응답에 없으므로 기존 것 유지
+      backendRefreshToken: token.backendRefreshToken,
+      backendTokenExpires: tokenExpiration || fallbackExpiration,
       backendError: false,
     };
   } catch (error) {
