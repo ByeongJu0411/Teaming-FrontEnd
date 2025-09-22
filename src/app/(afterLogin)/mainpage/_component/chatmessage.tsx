@@ -36,7 +36,12 @@ export default function ChatMessage({
 
   // 안 읽은 사용자 계산 함수
   const getUnreadUsers = (message: ChatMessage) => {
-    return allUsers.filter((user) => user.id !== message.senderId && !message.readBy.includes(user.id));
+    return allUsers.filter(
+      (user) =>
+        user.id !== message.senderId &&
+        user.id !== currentUserId && // 추가 안전장치
+        !message.readBy.includes(user.id)
+    );
   };
 
   // 안 읽은 사용자 수 계산 함수

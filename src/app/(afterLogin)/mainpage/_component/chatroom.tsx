@@ -5,18 +5,39 @@ import { FiPlus, FiSend } from "react-icons/fi";
 import React, { useRef, useState, useEffect } from "react";
 import { FcDocument, FcAddImage } from "react-icons/fc";
 import { ImExit } from "react-icons/im";
+import { useSession } from "next-auth/react";
 
 import DataRoom from "./dataroom";
 import CreateMission from "./createmission";
 import AssignmentRoom from "./assignmentroom";
 import ChatMessage from "./chatmessage";
-import PaymentModal from "./payment"; // PaymentModal 컴포넌트 import 추가
+import PaymentModal from "./payment";
+
+// 멤버 타입 정의
+interface Member {
+  memberId: number;
+  lastReadMessageId: number;
+  name: string;
+  avatarKey: string;
+  avatarVersion: number;
+  roomRole: "LEADER" | string;
+}
+
+// ChatUser 타입 정의 (ChatMessage에서 사용하는 형태)
+interface ChatUser {
+  id: number;
+  name: string;
+  avatar: string;
+  role?: string;
+}
 
 interface ChatRoomProps {
   roomData: {
     id: string;
     name: string;
     lastChat: string;
+    members?: Member[];
+    memberCount?: number;
   };
 }
 
@@ -30,13 +51,12 @@ interface ChatMessageType {
   readBy: number[];
 }
 
-// 테스트용 유저 데이터
-const testUsers = [
-  { id: 1, name: "권민석", avatar: "🐱" },
-  { id: 2, name: "팀장 최순조", avatar: "👨‍💼" },
-  { id: 3, name: "정치학 존잘남", avatar: "😎" },
-  { id: 4, name: "팀플하기싫다", avatar: "😩" },
-];
+// 기본 아바타 생성 함수
+const generateAvatar = (name: string): string => {
+  const avatars = ["🐱", "🐶", "🐰", "🐻", "🐼", "🐨", "🐯", "🦁", "🐸", "🐵"];
+  const index = name.length % avatars.length;
+  return avatars[index];
+};
 
 // 테스트용 메시지 데이터
 const testMessages: ChatMessageType[] = [
@@ -78,38 +98,65 @@ const testMessages: ChatMessageType[] = [
   },
 ];
 
-// 임시 사용자 정보
-const CURRENT_USER = {
-  id: 1,
-  name: "권민석",
-  token: "your-jwt-token-here",
-};
-
 export default function ChatRoom({ roomData }: ChatRoomProps) {
-  const [fileModalStatus, setFileModalStatus] = useState(false);
-  const [dataRoomModalStatus, setDataRoomModalStatus] = useState(false);
-  const [missionModalStatus, setMissionModalStatus] = useState(false);
-  const [assignmentModalStatus, setAssignmentModalStatus] = useState(false);
-  const [message, setMessage] = useState("");
+  const { data: session } = useSession();
+
+  const [fileModalStatus, setFileModalStatus] = useState<boolean>(false);
+  const [dataRoomModalStatus, setDataRoomModalStatus] = useState<boolean>(false);
+  const [missionModalStatus, setMissionModalStatus] = useState<boolean>(false);
+  const [assignmentModalStatus, setAssignmentModalStatus] = useState<boolean>(false);
+  const [message, setMessage] = useState<string>("");
   const [messages, setMessages] = useState<ChatMessageType[]>(testMessages);
-  const [isConnected, setIsConnected] = useState(true);
+  const [isConnected, setIsConnected] = useState<boolean>(true);
   const [hoveredMessage, setHoveredMessage] = useState<number | null>(null);
 
-  // Payment 컴포넌트 표시 상태 추가
-  const [showPayment, setShowPayment] = useState(true);
+  // Payment 컴포넌트 표시 상태
+  const [showPayment, setShowPayment] = useState<boolean>(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const file = useRef<HTMLInputElement | null>(null);
 
+  // 현재 로그인한 사용자 정보 (NextAuth 세션에서 가져오기)
+  const currentUser = {
+    id: 1, // 실제 구현시에는 백엔드에서 받은 사용자 ID 사용
+    name: session?.user?.name || "사용자",
+    email: session?.user?.email || "",
+    image: session?.user?.image || null,
+  };
+
+  // 실제 멤버 데이터 처리
+  const actualMembers: Member[] = roomData.members || [];
+  const memberCount: number = actualMembers.length || roomData.memberCount || 0;
+
+  // 멤버 정보를 ChatMessage에서 사용할 수 있는 형태로 변환 (현재 사용자 포함)
+  const chatUsers: ChatUser[] = [
+    // 현재 사용자 추가
+    {
+      id: currentUser.id,
+      name: currentUser.name,
+      avatar: generateAvatar(currentUser.name),
+      role: actualMembers.find((m) => m.memberId === currentUser.id)?.roomRole || "MEMBER",
+    },
+    // 기존 멤버들 추가 (중복 제거)
+    ...actualMembers
+      .filter((member) => member.memberId !== currentUser.id)
+      .map((member: Member) => ({
+        id: member.memberId,
+        name: member.name,
+        avatar: generateAvatar(member.name),
+        role: member.roomRole,
+      })),
+  ];
+
   // 자동 스크롤
-  const scrollToBottom = () => {
+  const scrollToBottom = (): void => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   // 메시지 전송
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
 
     const trimmedMessage = message.trim();
@@ -118,11 +165,11 @@ export default function ChatRoom({ roomData }: ChatRoomProps) {
     const newMessage: ChatMessageType = {
       id: Date.now(),
       content: trimmedMessage,
-      senderId: CURRENT_USER.id,
-      senderName: CURRENT_USER.name,
+      senderId: currentUser.id,
+      senderName: currentUser.name,
       timestamp: new Date().toISOString(),
       messageType: "TEXT",
-      readBy: [CURRENT_USER.id],
+      readBy: [currentUser.id],
     };
 
     setMessages((prev) => [...prev, newMessage]);
@@ -131,12 +178,12 @@ export default function ChatRoom({ roomData }: ChatRoomProps) {
   };
 
   // 입력 변화 처리
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setMessage(e.target.value);
   };
 
   // 키보드 이벤트 처리
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = (e: React.KeyboardEvent): void => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage(e);
@@ -144,17 +191,29 @@ export default function ChatRoom({ roomData }: ChatRoomProps) {
   };
 
   // 파일 선택
-  const openFileSelector = () => {
+  const openFileSelector = (): void => {
     file.current?.click();
     setFileModalStatus(false);
   };
 
   // Payment 처리 완료 핸들러
-  const handlePaymentComplete = () => {
+  const handlePaymentComplete = (): void => {
     setShowPayment(false);
   };
 
+  // 세션이 없으면 로그인 필요 메시지 표시
+  if (!session) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loginRequired}>
+          <p>채팅방을 이용하려면 로그인이 필요합니다.</p>
+        </div>
+      </div>
+    );
+  }
+
   // 컴포넌트 마운트 시 스크롤
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     scrollToBottom();
   }, [messages.length]);
@@ -174,22 +233,20 @@ export default function ChatRoom({ roomData }: ChatRoomProps) {
 
           <div className={styles.chatBody}>
             {showPayment ? (
-              // Payment 컴포넌트 표시
               <PaymentModal
                 setModal={() => setShowPayment(false)}
                 roomType={{
-                  id: "starbucks", // 또는 "megacoffee"
+                  id: "starbucks",
                   name: "Standard Room",
                   price: "4841원",
                   description: "스타벅스 아이스 아메리카노 1잔",
                   icon: "/starbucks.png",
                   iconClass: "starbucksIcon",
                 }}
-                memberCount={testUsers.length}
+                memberCount={memberCount}
                 onPaymentComplete={handlePaymentComplete}
               />
             ) : (
-              // 기존 채팅 UI
               <>
                 <div className={styles.chatMain}>
                   <div ref={messagesContainerRef} className={styles.messagesContainer}>
@@ -205,10 +262,10 @@ export default function ChatRoom({ roomData }: ChatRoomProps) {
                         <ChatMessage
                           key={msg.id}
                           message={msg}
-                          currentUserId={CURRENT_USER.id}
+                          currentUserId={currentUser.id}
                           showSenderName={showSenderName}
                           isLastMessage={isLastInGroup}
-                          allUsers={testUsers}
+                          allUsers={chatUsers}
                           hoveredMessage={hoveredMessage}
                           setHoveredMessage={setHoveredMessage}
                         />
@@ -260,15 +317,42 @@ export default function ChatRoom({ roomData }: ChatRoomProps) {
           </div>
 
           <div className={styles.chatUserList}>
-            <div className={styles.userListTitle}>참여자 ({testUsers.length})</div>
-            {testUsers.map((user) => (
-              <div key={user.id} className={styles.userItem}>
-                <div className={styles.userAvatar}>{user.avatar}</div>
-                <div className={styles.userInfo}>
-                  <div className={styles.userName}>{user.name}</div>
+            <div className={styles.userListTitle}>참여자 ({memberCount})</div>
+            {actualMembers.length > 0 ? (
+              actualMembers.map((member: Member) => (
+                <div key={member.memberId} className={styles.userItem}>
+                  <div className={styles.userAvatar}>
+                    {member.avatarKey ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`${process.env.NEXT_PUBLIC_BACKEND_URL}/files/${member.avatarKey}?v=${member.avatarVersion}`}
+                        alt={member.name}
+                        className={styles.avatarImage}
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = "none";
+                          if (target.nextSibling) {
+                            (target.nextSibling as HTMLElement).style.display = "block";
+                          }
+                        }}
+                      />
+                    ) : null}
+                    <span className={styles.emojiAvatar} style={{ display: member.avatarKey ? "none" : "block" }}>
+                      {generateAvatar(member.name)}
+                    </span>
+                  </div>
+                  <div className={styles.userInfo}>
+                    <div className={styles.userName}>
+                      {member.name}
+                      {member.roomRole === "LEADER" && <span className={styles.leaderBadge}>👑</span>}
+                      {member.name === currentUser.name && <span className={styles.currentUserBadge}>(나)</span>}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <div className={styles.loadingMembers}>멤버 정보를 불러오는 중...</div>
+            )}
           </div>
 
           <div className={styles.chatNavItem}>
@@ -325,12 +409,7 @@ export default function ChatRoom({ roomData }: ChatRoomProps) {
       {missionModalStatus && <CreateMission setModal={() => setMissionModalStatus(!missionModalStatus)} />}
       {/* 과제 확인하기 모달 */}
       {assignmentModalStatus && (
-        <>
-          {console.log("ChatRoom: roomData 전체:", roomData)}
-          {console.log("ChatRoom: roomData.id 값:", roomData.id)}
-          {console.log("ChatRoom: roomData.id 타입:", typeof roomData.id)}
-          <AssignmentRoom setModal={() => setAssignmentModalStatus(!assignmentModalStatus)} roomId={roomData.id} />
-        </>
+        <AssignmentRoom setModal={() => setAssignmentModalStatus(!assignmentModalStatus)} roomId={roomData.id} />
       )}
     </>
   );

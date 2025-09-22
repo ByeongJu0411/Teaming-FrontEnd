@@ -1,4 +1,4 @@
-// 컴포넌트 마운트시 방 목록 가져오기 (한 번만)"use client";
+"use client";
 
 import { JSX, useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
@@ -39,13 +39,14 @@ interface RoomData {
   members: Member[];
 }
 
-// Props에서 사용하는 Room 타입 (기존과 호환성 유지)
+// Props에서 사용하는 Room 타입 (멤버 정보 포함)
 interface Room {
   id: string;
   name: string;
   lastChat: string;
   unreadCount?: number;
   memberCount?: number;
+  members?: Member[]; // 멤버 정보 추가
 }
 
 interface ActionBarProps {
@@ -68,37 +69,28 @@ export default function ActionBar({
 }: ActionBarProps): JSX.Element {
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [loading, setLoading] = useState<boolean>(false); // 초기 로딩 상태를 false로 변경
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasInitialLoad, setHasInitialLoad] = useState<boolean>(false);
+  const [, setRawRoomData] = useState<RoomData[]>([]); // 원본 데이터 저장
   const { data: session } = useSession();
 
   const navItems: string[] = ["티밍룸 생성", "티밍룸 찾기", "마이페이지"];
 
-  // API에서 채팅방 목록 가져오기 - useCallback으로 메모이제이션
+  // API에서 채팅방 목록 가져오기
   const fetchRooms = useCallback(async (): Promise<void> => {
-    console.log("ActionBar: fetchRooms 시작");
+    // 세션이나 토큰이 없으면 조기 반환
+    if (!session?.accessToken || !session?.isBackendAuthenticated) {
+      console.log("ActionBar: 세션 또는 토큰이 없어서 API 호출하지 않음");
+      setHasInitialLoad(true);
+      return;
+    }
 
     try {
       setLoading(true);
       setError(null);
 
-      // 세션에서 JWT 토큰 가져오기
-      const token = session?.accessToken;
-
-      if (!token) {
-        console.error("ActionBar: 토큰이 없음");
-        throw new Error("인증 토큰이 없습니다. 로그인이 필요합니다.");
-      }
-
-      // 백엔드 인증 상태 확인
-      if (!session?.isBackendAuthenticated) {
-        console.error("ActionBar: 백엔드 인증되지 않음");
-        if (session?.backendError?.hasError) {
-          throw new Error(session.backendError.message || "백엔드 인증에 실패했습니다.");
-        } else {
-          throw new Error("백엔드 인증이 완료되지 않았습니다.");
-        }
-      }
+      const token = session.accessToken;
 
       console.log("ActionBar: API 요청 시작");
 
@@ -137,52 +129,64 @@ export default function ActionBar({
         throw new Error("서버 응답을 파싱할 수 없습니다.");
       }
 
-      console.log("ActionBar: Parsed data:", data);
-
       // 배열 확인
       if (!Array.isArray(data)) {
         console.error("ActionBar: Response is not an array:", typeof data);
         throw new Error("서버 응답이 배열 형식이 아닙니다.");
       }
 
-      // 안전한 데이터 변환
+      // 원본 데이터 저장
+      setRawRoomData(data);
+
+      // 안전한 데이터 변환 (멤버 정보 포함)
       const convertedRooms: Room[] = data.map((room) => ({
         id: room.roomId?.toString() || "0",
         name: room.title || "제목 없음",
         lastChat: room.lastMessage?.content || "메시지가 없습니다",
         unreadCount: room.unreadCount || 0,
         memberCount: room.memberCount || 0,
+        members: room.members || [], // 멤버 정보 포함
       }));
 
-      console.log("ActionBar: Converted rooms:", convertedRooms);
       console.log("ActionBar: 방 개수:", convertedRooms.length);
-
+      console.log("ActionBar: 멤버 정보 포함된 방 데이터:", convertedRooms);
       setRooms(convertedRooms);
     } catch (err) {
       console.error("ActionBar: 채팅방 목록을 가져오는데 실패했습니다:", err);
       setError(err instanceof Error ? err.message : "채팅방 목록을 불러올 수 없습니다");
       setRooms([]);
     } finally {
-      console.log("ActionBar: finally 블록 실행 - 로딩 상태 false로 변경");
       setLoading(false);
+      setHasInitialLoad(true);
     }
-  }, [session?.accessToken, session?.isBackendAuthenticated, session?.backendError]);
+  }, [session?.accessToken, session?.isBackendAuthenticated]);
 
-  // 컴포넌트 마운트시 및 세션 변경시 채팅방 목록 가져오기
+  // 초기 로딩 (세션이 준비되면 한 번만)
   useEffect(() => {
-    console.log("ActionBar: useEffect 실행, 세션 존재:", !!session);
-    if (session) {
+    if (session && !hasInitialLoad) {
+      console.log("ActionBar: 초기 로딩");
       fetchRooms();
     }
-  }, [session, fetchRooms]);
+  }, [session, hasInitialLoad, fetchRooms]);
+
+  // 방 생성 시에만 새로고침 (refreshTrigger 변경 감지)
+  useEffect(() => {
+    if (refreshTrigger && refreshTrigger > 0 && hasInitialLoad) {
+      console.log("ActionBar: 방 생성으로 인한 새로고침, refreshTrigger:", refreshTrigger);
+      fetchRooms();
+    }
+  }, [refreshTrigger, hasInitialLoad, fetchRooms]);
 
   const handleItemClick = (item: string): void => {
     setSelectedItem(item);
     onMenuSelect(item);
   };
 
+  // 방 클릭 시 멤버 정보가 포함된 Room 데이터 전달
   const handleRoomClick = (room: Room): void => {
-    onRoomSelect(room);
+    console.log("ActionBar: 방 선택됨:", room.name);
+    console.log("ActionBar: 전달되는 멤버 정보:", room.members);
+    onRoomSelect(room); // 이미 멤버 정보가 포함되어 있음
     setSelectedItem(null);
   };
 
@@ -194,8 +198,6 @@ export default function ActionBar({
   // 사용자 정보 추출
   const userImage = session?.user?.image;
   const userName = session?.user?.name || "사용자";
-
-  console.log("ActionBar: 렌더링 - loading:", loading, "rooms.length:", rooms.length, "error:", error);
 
   return (
     <div className={styles.actionBar}>
