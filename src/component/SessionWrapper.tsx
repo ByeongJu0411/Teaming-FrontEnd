@@ -15,6 +15,7 @@ export default function SessionWrapper({ children }: SessionWrapperProps) {
       refetchInterval={5 * 60} // 5분마다 세션 확인
       // 창이 포커스될 때 세션 갱신
       refetchOnWindowFocus={true}
+      refetchWhenOffline={false}
     >
       {children}
     </SessionProvider>
