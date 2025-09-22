@@ -12,6 +12,7 @@ declare module "next-auth" {
     accessToken?: string;
     refreshToken?: string;
     provider?: string;
+    tokenExpires?: number;
     providerAccountId?: string;
     isBackendAuthenticated?: boolean;
     backendError?: {
@@ -38,6 +39,7 @@ declare module "next-auth/jwt" {
     image?: string;
     backendAccessToken?: string;
     backendRefreshToken?: string;
+    backendTokenExpires?: number;
     provider?: string;
     providerAccountId?: string;
     backendError?: boolean;
