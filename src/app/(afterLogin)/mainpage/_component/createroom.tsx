@@ -55,6 +55,11 @@ interface RoomType {
   isElite?: boolean;
 }
 
+// CreateRoom Props 타입 (부모 컴포넌트에서 전달받음)
+interface CreateRoomProps {
+  onRoomCreated?: () => void; // 방 생성 완료 시 호출될 콜백
+}
+
 // 모달 컴포넌트
 const InviteLinkModal = ({ isOpen, onClose, inviteCode, roomTitle }: InviteLinkModalProps) => {
   if (!isOpen) return null;
@@ -136,7 +141,7 @@ const InviteLinkModal = ({ isOpen, onClose, inviteCode, roomTitle }: InviteLinkM
   );
 };
 
-export default function CreateRoom() {
+export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
   const { data: session, status } = useSession();
 
   // 상태 관리
@@ -210,10 +215,18 @@ export default function CreateRoom() {
   const handleModalClose = (): void => {
     setShowModal(false);
 
-    // 모달 닫기 후 페이지 새로고침으로 ActionBar 자동 업데이트
-    setTimeout(() => {
-      window.location.reload();
-    }, 100); // 0.5초 후 새로고침 (모달 닫기 애니메이션 완료 후)
+    // 부모 컴포넌트에 방 생성 완료를 알림 (refreshTrigger 업데이트)
+    if (onRoomCreated) {
+      onRoomCreated();
+    }
+
+    // 입력 필드 초기화
+    setRoomTitle("");
+    setRoomSubTitle("");
+    setSelectedRoom("");
+    setTeamCount(1);
+    removeProfileImage();
+    setInviteCode("");
   };
 
   // 메인 API 호출 함수
@@ -245,7 +258,6 @@ export default function CreateRoom() {
     try {
       // 3. 환경 변수 확인
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080";
-      console.log("Backend URL:", backendUrl);
 
       // 4. NextAuth 세션에서 JWT 토큰 가져오기
       const token = session?.accessToken;
@@ -263,10 +275,7 @@ export default function CreateRoom() {
         }
       }
 
-      console.log("Token found:", !!token);
-      console.log("Backend authenticated:", session.isBackendAuthenticated);
-
-      // 6. JSON 데이터 생성 (최소한의 필수 필드만)
+      // 6. JSON 데이터 생성
       const roomData = {
         title: roomTitle,
         description: roomSubTitle || "",
@@ -274,11 +283,10 @@ export default function CreateRoom() {
         roomType: selectedRoom, // "BASIC", "STANDARD", "ELITE"
       };
 
-      console.log("Request URL:", `${backendUrl}/rooms`);
+      console.log("CreateRoom: 방 생성 요청 시작");
       console.log("Request Data:", JSON.stringify(roomData, null, 2));
-      console.log("Selected Room Type:", selectedRoom);
 
-      // 7. API 호출 (JSON 형식으로 변경)
+      // 7. API 호출
       const response = await fetch(`${backendUrl}/rooms`, {
         method: "POST",
         headers: {
@@ -288,8 +296,7 @@ export default function CreateRoom() {
         body: JSON.stringify(roomData),
       });
 
-      console.log("Response Status:", response.status);
-      console.log("Response Headers:", Object.fromEntries(response.headers.entries()));
+      console.log("CreateRoom: Response Status:", response.status);
 
       // 8. 응답 처리
       if (!response.ok) {
@@ -307,13 +314,13 @@ export default function CreateRoom() {
       }
 
       const result = await response.json();
-      console.log("Success Response:", result);
+      console.log("CreateRoom: 방 생성 성공:", result);
 
       // 9. 응답에서 inviteCode 추출
       if (result.inviteCode) {
         setInviteCode(result.inviteCode);
         setShowModal(true);
-        console.log("✅ 티밍룸 생성 성공! 모달 닫기 후 자동 새로고침됩니다.");
+        console.log("✅ 티밍룸 생성 성공! 모달 표시 중...");
       } else {
         throw new Error("초대 코드를 받지 못했습니다.");
       }

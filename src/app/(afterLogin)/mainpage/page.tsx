@@ -16,8 +16,7 @@ export default function MainPage(): JSX.Element {
   const [selectedRoom, setSelectedRoom] = useState<{ id: string; name: string; lastChat: string } | null>(null);
   const [backendAuthAttempted, setBackendAuthAttempted] = useState<boolean>(false);
   const [canProceedWithoutBackend, setCanProceedWithoutBackend] = useState<boolean>(false);
-  const [refreshRooms, setRefreshRooms] = useState<number>(0); // 채팅방 목록 새로고침 트리거
-
+  const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
   const { data: session, status } = useSession();
   const router = useRouter();
   const hasRedirected = useRef(false);
@@ -85,10 +84,9 @@ export default function MainPage(): JSX.Element {
     setSelectedMenu(null);
   };
 
-  // 채팅방 목록 새로고침 함수 추가
-  const handleRoomsRefresh = (): void => {
-    console.log("ActionBar 새로고침 요청");
-    setRefreshRooms((prev) => prev + 1);
+  const handleRoomCreated = () => {
+    // 방 생성 완료 시 refreshTrigger를 증가시켜 ActionBar 새로고침
+    setRefreshTrigger((prev) => prev + 1);
   };
 
   const renderContent = (): JSX.Element | null => {
@@ -98,9 +96,9 @@ export default function MainPage(): JSX.Element {
 
     switch (selectedMenu) {
       case "티밍룸 생성":
-        return <CreateRoom />;
+        return <CreateRoom onRoomCreated={handleRoomCreated} />;
       case "티밍룸 찾기":
-        return <FindRoom onRoomJoined={handleRoomsRefresh} />;
+        return <FindRoom onRoomJoined={handleRoomCreated} />;
       case "마이페이지":
         return <MyPage />;
       default:
@@ -254,7 +252,12 @@ export default function MainPage(): JSX.Element {
           )}
         </div>
 
-        <ActionBar onMenuSelect={handleMenuSelect} onRoomSelect={handleRoomSelect} selectedRoom={selectedRoom} />
+        <ActionBar
+          onMenuSelect={handleMenuSelect}
+          onRoomSelect={handleRoomSelect}
+          selectedRoom={selectedRoom}
+          refreshTrigger={refreshTrigger}
+        />
         {renderContent()}
       </div>
     </>
