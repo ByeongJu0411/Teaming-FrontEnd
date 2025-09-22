@@ -1,8 +1,11 @@
 "use client";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import styles from "./assignmentroom.module.css";
 import { IoChevronBack } from "react-icons/io5";
-import { FiClock, FiUser, FiCheckCircle, FiCircle, FiUpload, FiFile, FiX } from "react-icons/fi";
+import AssignmentList from "./_assignment/AssignmentList";
+import AssignmentDetail from "./_assignment/AssignmentDetail";
+import SubmissionModal from "./_assignment/SubmissionModal";
+import ViewSubmissionModal from "./_assignment/ViewSubmissionModal";
 
 interface ModalProps {
   setModal: () => void;
@@ -94,81 +97,19 @@ const AssignmentRoom = ({ setModal }: ModalProps) => {
   const [viewingSubmission, setViewingSubmission] = useState<Assignment["submissions"][0] | null>(null);
   const [submissionText, setSubmissionText] = useState("");
   const [submissionFiles, setSubmissionFiles] = useState<File[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const preventOffModal = (event: React.MouseEvent) => {
     event.stopPropagation();
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("ko-KR", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const formatDateShort = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("ko-KR", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "완료":
-        return "#10b981";
-      case "마감":
-        return "#ef4444";
-      default:
-        return "#3b82f6";
-    }
-  };
-
-  const getMemberAvatar = (memberId: string) => {
-    const member = testMembers.find((m) => m.id === memberId);
-    return member?.avatar || "👤";
-  };
-
-  const getCompletionRate = (assignment: Assignment) => {
-    const completed = assignment.submissions.filter((s) => s.status === "제출완료").length;
-    return Math.round((completed / assignment.submissions.length) * 100);
-  };
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files) {
-      setSubmissionFiles((prev) => [...prev, ...Array.from(files)]);
-    }
-  };
-
-  const removeFile = (index: number) => {
-    setSubmissionFiles((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-  };
-
-  const handleSubmitAssignment = () => {
+  const handleSubmitAssignment = (data: { text: string; files: File[] }) => {
     if (!selectedAssignment) return;
 
     // 과제 제출 로직
     const submissionData = {
       assignmentId: selectedAssignment.id,
-      text: submissionText,
-      files: submissionFiles,
+      text: data.text,
+      files: data.files,
       submittedAt: new Date().toISOString(),
     };
 
@@ -188,8 +129,8 @@ const AssignmentRoom = ({ setModal }: ModalProps) => {
                   status: "제출완료" as const,
                   submittedAt: new Date().toISOString(),
                   submissionData: {
-                    text: submissionText,
-                    files: submissionFiles.map((file) => ({
+                    text: data.text,
+                    files: data.files.map((file) => ({
                       name: file.name,
                       size: file.size,
                     })),
@@ -215,8 +156,8 @@ const AssignmentRoom = ({ setModal }: ModalProps) => {
               status: "제출완료" as const,
               submittedAt: new Date().toISOString(),
               submissionData: {
-                text: submissionText,
-                files: submissionFiles.map((file) => ({
+                text: data.text,
+                files: data.files.map((file) => ({
                   name: file.name,
                   size: file.size,
                 })),
@@ -247,6 +188,14 @@ const AssignmentRoom = ({ setModal }: ModalProps) => {
     }
   };
 
+  const handleAssignmentSelect = (assignment: Assignment) => {
+    setSelectedAssignment(assignment);
+  };
+
+  const handleSubmitClick = () => {
+    setShowSubmissionModal(true);
+  };
+
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => {
@@ -267,297 +216,43 @@ const AssignmentRoom = ({ setModal }: ModalProps) => {
 
         <div className={styles.modalBody}>
           {/* 과제 목록 */}
-          <div className={styles.assignmentList}>
-            <div className={styles.listHeader}>
-              <h3>진행중인 과제 ({assignments.length})</h3>
-            </div>
-
-            <div className={styles.assignments}>
-              {assignments.map((assignment) => (
-                <div
-                  key={assignment.id}
-                  className={`${styles.assignmentCard} ${
-                    selectedAssignment?.id === assignment.id ? styles.selected : ""
-                  }`}
-                  onClick={() => setSelectedAssignment(assignment)}
-                >
-                  <div className={styles.cardHeader}>
-                    <h4 className={styles.assignmentTitle}>{assignment.title}</h4>
-                    <span className={styles.statusBadge} style={{ backgroundColor: getStatusColor(assignment.status) }}>
-                      {assignment.status}
-                    </span>
-                  </div>
-
-                  <div className={styles.cardInfo}>
-                    <div className={styles.infoRow}>
-                      <FiUser size={14} />
-                      <span>담당자: {assignment.creator}</span>
-                    </div>
-                    <div className={styles.infoRow}>
-                      <FiClock size={14} />
-                      <span>마감: {formatDateShort(assignment.dueDate)}</span>
-                    </div>
-                  </div>
-
-                  <div className={styles.progressInfo}>
-                    <div className={styles.memberAvatars}>
-                      {assignment.assignedMembers.slice(0, 3).map((memberId) => (
-                        <div key={memberId} className={styles.memberAvatar}>
-                          {getMemberAvatar(memberId)}
-                        </div>
-                      ))}
-                      {assignment.assignedMembers.length > 3 && (
-                        <div className={styles.memberAvatar}>+{assignment.assignedMembers.length - 3}</div>
-                      )}
-                    </div>
-                    <div className={styles.completionRate}>완료율: {getCompletionRate(assignment)}%</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <AssignmentList
+            assignments={assignments}
+            selectedAssignment={selectedAssignment}
+            onAssignmentSelect={handleAssignmentSelect}
+            members={testMembers}
+          />
 
           {/* 과제 상세 정보 */}
-          <div className={styles.assignmentDetail}>
-            {selectedAssignment ? (
-              <>
-                <div className={styles.detailHeader}>
-                  <h3>{selectedAssignment.title}</h3>
-                  <span
-                    className={styles.statusBadge}
-                    style={{ backgroundColor: getStatusColor(selectedAssignment.status) }}
-                  >
-                    {selectedAssignment.status}
-                  </span>
-                </div>
-
-                <div className={styles.detailContent}>
-                  <div className={styles.section}>
-                    <h4 className={styles.sectionTitle}>과제 설명</h4>
-                    <div className={styles.description}>
-                      {selectedAssignment.description.split("\n").map((line, index) => (
-                        <p key={index}>{line}</p>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className={styles.section}>
-                    <h4 className={styles.sectionTitle}>과제 정보</h4>
-                    <div className={styles.assignmentInfo}>
-                      <div className={styles.infoItem}>
-                        <span className={styles.infoLabel}>생성자:</span>
-                        <span>{selectedAssignment.creator}</span>
-                      </div>
-                      <div className={styles.infoItem}>
-                        <span className={styles.infoLabel}>생성일:</span>
-                        <span>{formatDate(selectedAssignment.createdAt)}</span>
-                      </div>
-                      <div className={styles.infoItem}>
-                        <span className={styles.infoLabel}>마감일:</span>
-                        <span>{formatDate(selectedAssignment.dueDate)}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={styles.section}>
-                    <div className={styles.sectionHeader}>
-                      <h4 className={styles.sectionTitle}>제출 현황</h4>
-                      {selectedAssignment && canSubmit(selectedAssignment) && (
-                        <button className={styles.submitButton} onClick={() => setShowSubmissionModal(true)}>
-                          과제 제출하기
-                        </button>
-                      )}
-                    </div>
-                    <div className={styles.submissionList}>
-                      {selectedAssignment.submissions.map((submission) => (
-                        <div
-                          key={submission.memberId}
-                          className={`${styles.submissionItem} ${
-                            submission.status === "제출완료" ? styles.clickable : ""
-                          }`}
-                          onClick={() => handleViewSubmission(submission)}
-                        >
-                          <div className={styles.submissionMember}>
-                            <div className={styles.memberAvatar}>{getMemberAvatar(submission.memberId)}</div>
-                            <span className={styles.memberName}>{submission.memberName}</span>
-                          </div>
-
-                          <div className={styles.submissionStatus}>
-                            {submission.status === "제출완료" ? (
-                              <>
-                                <FiCheckCircle color="#10b981" size={16} />
-                                <div className={styles.submissionDetails}>
-                                  <span className={styles.submittedText}>
-                                    {submission.submittedAt && formatDateShort(submission.submittedAt)}
-                                  </span>
-                                </div>
-                              </>
-                            ) : (
-                              <>
-                                <FiCircle color="#666" size={16} />
-                                <span className={styles.waitingText}>대기중</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className={styles.emptyState}>
-                <div className={styles.emptyIcon}>📋</div>
-                <h3>과제를 선택해주세요</h3>
-                <p>왼쪽에서 과제를 선택하면 상세 정보를 확인할 수 있습니다.</p>
-              </div>
-            )}
-          </div>
+          <AssignmentDetail
+            assignment={selectedAssignment}
+            members={testMembers}
+            onSubmitClick={handleSubmitClick}
+            onViewSubmission={handleViewSubmission}
+            canSubmit={canSubmit}
+          />
         </div>
 
         {/* 과제 제출 모달 */}
-        {showSubmissionModal && selectedAssignment && (
-          <div className={styles.submissionModalBackground} onClick={() => setShowSubmissionModal(false)}>
-            <div className={styles.submissionModal} onClick={(e) => e.stopPropagation()}>
-              <div className={styles.submissionHeader}>
-                <h3>과제 제출하기</h3>
-                <button className={styles.closeButton} onClick={() => setShowSubmissionModal(false)}>
-                  <FiX size={20} />
-                </button>
-              </div>
-
-              <div className={styles.submissionContent}>
-                <div className={styles.assignmentSummary}>
-                  <h4>{selectedAssignment.title}</h4>
-                  <p>마감일: {formatDate(selectedAssignment.dueDate)}</p>
-                </div>
-
-                <div className={styles.submissionForm}>
-                  <div className={styles.formSection}>
-                    <label className={styles.formLabel}>제출 내용</label>
-                    <textarea
-                      value={submissionText}
-                      onChange={(e) => setSubmissionText(e.target.value)}
-                      placeholder="과제에 대한 설명이나 제출 내용을 작성해주세요..."
-                      className={styles.submissionTextarea}
-                      rows={6}
-                    />
-                  </div>
-
-                  <div className={styles.formSection}>
-                    <label className={styles.formLabel}>파일 첨부</label>
-                    <div className={styles.fileUploadArea}>
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileSelect}
-                        multiple
-                        style={{ display: "none" }}
-                      />
-                      <button className={styles.fileUploadButton} onClick={() => fileInputRef.current?.click()}>
-                        <FiUpload size={16} />
-                        파일 선택
-                      </button>
-                      <span className={styles.fileUploadText}>파일을 선택하거나 드래그해서 업로드하세요</span>
-                    </div>
-
-                    {submissionFiles.length > 0 && (
-                      <div className={styles.fileList}>
-                        {submissionFiles.map((file, index) => (
-                          <div key={index} className={styles.fileItem}>
-                            <div className={styles.fileInfo}>
-                              <FiFile size={16} />
-                              <span className={styles.fileName}>{file.name}</span>
-                              <span className={styles.fileSize}>({formatFileSize(file.size)})</span>
-                            </div>
-                            <button className={styles.removeFileButton} onClick={() => removeFile(index)}>
-                              <FiX size={14} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className={styles.submissionFooter}>
-                <button className={styles.cancelButton} onClick={() => setShowSubmissionModal(false)}>
-                  취소
-                </button>
-                <button
-                  className={styles.confirmSubmitButton}
-                  onClick={handleSubmitAssignment}
-                  disabled={!submissionText.trim() && submissionFiles.length === 0}
-                >
-                  제출하기
-                </button>
-              </div>
-            </div>
-          </div>
+        {selectedAssignment && (
+          <SubmissionModal
+            assignment={selectedAssignment}
+            isOpen={showSubmissionModal}
+            onClose={() => setShowSubmissionModal(false)}
+            onSubmit={handleSubmitAssignment}
+            submissionText={submissionText}
+            setSubmissionText={setSubmissionText}
+            submissionFiles={submissionFiles}
+            setSubmissionFiles={setSubmissionFiles}
+          />
         )}
 
         {/* 제출 내용 확인 모달 */}
-        {showViewModal && viewingSubmission && (
-          <div className={styles.submissionModalBackground} onClick={() => setShowViewModal(false)}>
-            <div className={styles.submissionModal} onClick={(e) => e.stopPropagation()}>
-              <div className={styles.submissionHeader}>
-                <h3>{viewingSubmission.memberName}님의 제출 내용</h3>
-                <button className={styles.closeButton} onClick={() => setShowViewModal(false)}>
-                  <FiX size={20} />
-                </button>
-              </div>
-
-              <div className={styles.submissionContent}>
-                <div className={styles.submissionInfo}>
-                  <div className={styles.infoItem}>
-                    <span className={styles.infoLabel}>제출자:</span>
-                    <span>{viewingSubmission.memberName}</span>
-                  </div>
-                  <div className={styles.infoItem}>
-                    <span className={styles.infoLabel}>제출일:</span>
-                    <span>{viewingSubmission.submittedAt && formatDate(viewingSubmission.submittedAt)}</span>
-                  </div>
-                </div>
-
-                {viewingSubmission.submissionData && (
-                  <div className={styles.submissionViewForm}>
-                    {viewingSubmission.submissionData.text && (
-                      <div className={styles.formSection}>
-                        <label className={styles.formLabel}>제출 내용</label>
-                        <div className={styles.submissionTextView}>{viewingSubmission.submissionData.text}</div>
-                      </div>
-                    )}
-
-                    {viewingSubmission.submissionData.files.length > 0 && (
-                      <div className={styles.formSection}>
-                        <label className={styles.formLabel}>첨부 파일</label>
-                        <div className={styles.fileList}>
-                          {viewingSubmission.submissionData.files.map((file, index) => (
-                            <div key={index} className={styles.fileViewItem}>
-                              <div className={styles.fileInfo}>
-                                <FiFile size={16} />
-                                <span className={styles.fileName}>{file.name}</span>
-                                <span className={styles.fileSize}>({formatFileSize(file.size)})</span>
-                              </div>
-                              <button className={styles.downloadButton}>다운로드</button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className={styles.submissionFooter}>
-                <button className={styles.cancelButton} onClick={() => setShowViewModal(false)}>
-                  닫기
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <ViewSubmissionModal
+          submission={viewingSubmission}
+          isOpen={showViewModal}
+          onClose={() => setShowViewModal(false)}
+        />
       </div>
     </div>
   );

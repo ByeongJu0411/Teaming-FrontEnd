@@ -1,0 +1,207 @@
+/* 제출 내용 확인 모달 */
+.submissionModalBackground {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+
+.submissionModal {
+  background-color: #1a1a1a;
+  border: 2px solid #333;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  color: #f7f7f7;
+}
+
+.submissionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #333;
+}
+
+.submissionHeader h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #f7f7f7;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  color: #f7f7f7;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.closeButton:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.submissionContent {
+  flex: 1;
+  padding: 1.5rem;
+  overflow-y: auto;
+  max-height: calc(80vh - 140px); /* 헤더와 푸터 높이를 제외한 최대 높이 */
+}
+
+.submissionInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background-color: #2a2a2a;
+  border: 1px solid #404040;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.infoItem {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.infoLabel {
+  font-weight: 500;
+  color: #999;
+  min-width: 80px;
+}
+
+.submissionViewForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.formSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.formLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6096ff;
+}
+
+.submissionTextView {
+  background-color: #2a2a2a;
+  border: 1px solid #404040;
+  border-radius: 6px;
+  padding: 0.75rem;
+  color: #f7f7f7;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.fileList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.fileViewItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background-color: #333;
+  border: 1px solid #404040;
+  border-radius: 6px;
+}
+
+.fileInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.fileName {
+  font-weight: 500;
+  color: #f7f7f7;
+}
+
+.fileSize {
+  font-size: 12px;
+  color: #999;
+}
+
+.downloadButton {
+  background-color: #3b82f6;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.downloadButton:hover {
+  background-color: #2563eb;
+}
+
+.submissionFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #333;
+}
+
+.cancelButton {
+  background: none;
+  border: 1px solid #666;
+  border-radius: 6px;
+  color: #f7f7f7;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.cancelButton:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* 제출 내용 확인 모달 스크롤바 스타일링 */
+.submissionContent::-webkit-scrollbar {
+  width: 6px;
+}
+
+.submissionContent::-webkit-scrollbar-track {
+  background: #2a2a2a;
+  border-radius: 3px;
+}
+
+.submissionContent::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 3px;
+}
+
+.submissionContent::-webkit-scrollbar-thumb:hover {
+  background: #666;
+}
