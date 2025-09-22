@@ -1,6 +1,6 @@
-"use client";
+// 컴포넌트 마운트시 방 목록 가져오기 (한 번만)"use client";
 
-import { JSX, useState, useEffect } from "react";
+import { JSX, useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import styles from "./actionbar.module.css";
 
@@ -52,6 +52,7 @@ interface ActionBarProps {
   onMenuSelect: (menu: string) => void;
   onRoomSelect: (room: Room) => void;
   selectedRoom: Room | null;
+  refreshTrigger?: number; // 방 생성 시 새로고침 트리거
   userInfo?: {
     name?: string | null;
     email?: string | null;
@@ -59,46 +60,30 @@ interface ActionBarProps {
   };
 }
 
-export default function ActionBar({ onMenuSelect, onRoomSelect, selectedRoom }: ActionBarProps): JSX.Element {
+export default function ActionBar({
+  onMenuSelect,
+  onRoomSelect,
+  selectedRoom,
+  refreshTrigger,
+}: ActionBarProps): JSX.Element {
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false); // 초기 로딩 상태를 false로 변경
   const [error, setError] = useState<string | null>(null);
   const { data: session } = useSession();
 
   const navItems: string[] = ["티밍룸 생성", "티밍룸 찾기", "마이페이지"];
 
-  // 시간 포맷팅 함수
-  const formatTime = (dateString: string): string => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor(diff / (1000 * 60));
+  // API에서 채팅방 목록 가져오기 - useCallback으로 메모이제이션
+  const fetchRooms = useCallback(async (): Promise<void> => {
+    console.log("ActionBar: fetchRooms 시작");
 
-    if (minutes < 1) return "방금";
-    if (minutes < 60) return `${minutes}분 전`;
-    if (hours < 24) return `${hours}시간 전`;
-
-    const days = Math.floor(hours / 24);
-    if (days < 7) return `${days}일 전`;
-
-    return date.toLocaleDateString();
-  };
-  // API에서 채팅방 목록 가져오기
-  const fetchRooms = async (): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
 
       // 세션에서 JWT 토큰 가져오기
       const token = session?.accessToken;
-
-      // 토큰 상태 상세 로깅
-      console.log("ActionBar: 전체 세션 정보:", session);
-      console.log("ActionBar: 토큰 존재 여부:", !!token);
-      console.log("ActionBar: 토큰 길이:", token?.length);
-      console.log("ActionBar: 백엔드 인증 상태:", session?.isBackendAuthenticated);
 
       if (!token) {
         console.error("ActionBar: 토큰이 없음");
@@ -115,21 +100,16 @@ export default function ActionBar({ onMenuSelect, onRoomSelect, selectedRoom }: 
         }
       }
 
-      console.log("ActionBar: 요청 시작");
-      console.log("ActionBar: URL:", `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080"}/rooms`);
-      console.log("ActionBar: Token exists:", !!token);
+      console.log("ActionBar: API 요청 시작");
 
-      // 스웨거 스펙에 맞게 헤더 최소화
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080"}/rooms`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
-          // Content-Type 제거 - GET 요청에는 필요없음
         },
       });
 
       console.log("ActionBar: Response status:", response.status);
-      console.log("ActionBar: Response headers:", Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -165,25 +145,6 @@ export default function ActionBar({ onMenuSelect, onRoomSelect, selectedRoom }: 
         throw new Error("서버 응답이 배열 형식이 아닙니다.");
       }
 
-      // 멤버 정보 디버깅 추가
-      console.log("ActionBar: 방 목록과 멤버 정보:");
-      data.forEach((room, index) => {
-        console.log(`방 ${index + 1} (ID: ${room.roomId}):`, room.title);
-        console.log(`  - 멤버 수: ${room.memberCount}`);
-        console.log(`  - 멤버 목록:`, room.members);
-
-        if (room.members && room.members.length > 0) {
-          room.members.forEach((member, memberIndex) => {
-            console.log(
-              `    멤버 ${memberIndex + 1}: ID(${member.memberId}), 이름(${member.name}), 역할(${member.roomRole})`
-            );
-          });
-        } else {
-          console.log("    멤버 정보 없음");
-        }
-        console.log("---");
-      });
-
       // 안전한 데이터 변환
       const convertedRooms: Room[] = data.map((room) => ({
         id: room.roomId?.toString() || "0",
@@ -194,22 +155,26 @@ export default function ActionBar({ onMenuSelect, onRoomSelect, selectedRoom }: 
       }));
 
       console.log("ActionBar: Converted rooms:", convertedRooms);
+      console.log("ActionBar: 방 개수:", convertedRooms.length);
+
       setRooms(convertedRooms);
     } catch (err) {
       console.error("ActionBar: 채팅방 목록을 가져오는데 실패했습니다:", err);
       setError(err instanceof Error ? err.message : "채팅방 목록을 불러올 수 없습니다");
       setRooms([]);
     } finally {
+      console.log("ActionBar: finally 블록 실행 - 로딩 상태 false로 변경");
       setLoading(false);
     }
-  };
+  }, [session?.accessToken, session?.isBackendAuthenticated, session?.backendError]);
 
   // 컴포넌트 마운트시 및 세션 변경시 채팅방 목록 가져오기
   useEffect(() => {
+    console.log("ActionBar: useEffect 실행, 세션 존재:", !!session);
     if (session) {
       fetchRooms();
     }
-  }, [session]);
+  }, [session, fetchRooms]);
 
   const handleItemClick = (item: string): void => {
     setSelectedItem(item);
@@ -229,6 +194,8 @@ export default function ActionBar({ onMenuSelect, onRoomSelect, selectedRoom }: 
   // 사용자 정보 추출
   const userImage = session?.user?.image;
   const userName = session?.user?.name || "사용자";
+
+  console.log("ActionBar: 렌더링 - loading:", loading, "rooms.length:", rooms.length, "error:", error);
 
   return (
     <div className={styles.actionBar}>
