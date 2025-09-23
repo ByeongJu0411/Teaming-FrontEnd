@@ -280,7 +280,7 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
         title: roomTitle,
         description: roomSubTitle || "",
         memberCount: teamCount,
-        roomType: selectedRoom, // "BASIC", "STANDARD", "ELITE"
+        roomType: roomTitle === "전병주 멋쟁이" ? "DEMO" : selectedRoom, // 조건부 roomType 설정
       };
 
       console.log("CreateRoom: 방 생성 요청 시작");
