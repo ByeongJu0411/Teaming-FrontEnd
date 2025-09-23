@@ -176,8 +176,8 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
     {
       id: "ELITE",
       name: "Elite Room",
-      price: "팀원당 2060원",
-      description: "스타벅스 아이스 음료 1개 + 프렌치 크루아상",
+      price: "팀원당 8240원",
+      description: "스타벅스 아이스 아메리카노 1개 + 프렌치 크루아상",
       icon: "/starbucks.png",
       iconClass: "starbucksIcon",
       isElite: true,
