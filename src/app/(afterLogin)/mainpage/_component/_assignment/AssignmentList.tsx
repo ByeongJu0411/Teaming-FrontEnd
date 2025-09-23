@@ -64,11 +64,18 @@ interface AssignmentListProps {
   selectedAssignment: Assignment | null;
   onAssignmentSelect: (assignment: Assignment) => void;
   members: Member[];
+  refreshTrigger?: number; // 새로고침 트리거 추가
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080";
 
-const AssignmentList: React.FC<AssignmentListProps> = ({ roomId, selectedAssignment, onAssignmentSelect, members }) => {
+const AssignmentList: React.FC<AssignmentListProps> = ({
+  roomId,
+  selectedAssignment,
+  onAssignmentSelect,
+  members,
+  refreshTrigger,
+}) => {
   const { data: session } = useSession();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,7 +90,7 @@ const AssignmentList: React.FC<AssignmentListProps> = ({ roomId, selectedAssignm
   console.log("- 변환된 currentRoomId:", currentRoomId, "타입:", typeof currentRoomId);
   console.log("- isNaN check:", isNaN(currentRoomId as number));
 
-  // API 응답을 컴포넌트 형식으로 변환
+  // API 응답을 컴포넌트 형식으로 변환 - 핵심 부분
   const transformApiResponse = (apiData: AssignmentApiResponse): Assignment => {
     const getKoreanStatus = (status: string) => {
       switch (status) {
@@ -97,13 +104,17 @@ const AssignmentList: React.FC<AssignmentListProps> = ({ roomId, selectedAssignm
       }
     };
 
+    // 과제에 할당된 멤버들의 제출 현황 생성 - 핵심 로직
     const submissions = apiData.assignedMemberIds.map((memberId) => {
+      // members 배열에서 해당 멤버 찾기 (id를 string으로 비교)
       const member = members.find((m) => m.id === memberId.toString());
       const memberName = member?.name || `사용자 ${memberId}`;
 
+      // 해당 멤버의 제출 정보 찾기
       const memberSubmission = apiData.submissions.find((submission) => submission.submitterId === memberId);
 
       if (memberSubmission) {
+        // 제출 완료된 경우
         return {
           memberId: memberId.toString(),
           memberName,
@@ -119,6 +130,7 @@ const AssignmentList: React.FC<AssignmentListProps> = ({ roomId, selectedAssignm
           },
         };
       } else {
+        // 아직 제출하지 않은 경우
         return {
           memberId: memberId.toString(),
           memberName,
@@ -205,7 +217,12 @@ const AssignmentList: React.FC<AssignmentListProps> = ({ roomId, selectedAssignm
         throw new Error("서버 응답이 배열 형식이 아닙니다.");
       }
 
+      console.log("AssignmentList: 변환 전 API 데이터:", data);
+      console.log("AssignmentList: 사용 가능한 멤버 목록:", members);
+
       const transformedAssignments = data.map(transformApiResponse);
+      console.log("AssignmentList: 변환 후 과제 데이터:", transformedAssignments);
+
       setAssignments(transformedAssignments);
     } catch (error) {
       console.error("AssignmentList: 과제 로드 실패:", error);
@@ -239,6 +256,14 @@ const AssignmentList: React.FC<AssignmentListProps> = ({ roomId, selectedAssignm
       }
     }
   }, [currentRoomId, session]);
+
+  // refreshTrigger가 변경되면 새로고침
+  useEffect(() => {
+    if (refreshTrigger && refreshTrigger > 0 && session && session.isBackendAuthenticated && currentRoomId) {
+      console.log("AssignmentList: refreshTrigger로 인한 새로고침:", refreshTrigger);
+      loadAssignments();
+    }
+  }, [refreshTrigger]);
 
   const formatDateShort = (dateString: string) => {
     const date = new Date(dateString);

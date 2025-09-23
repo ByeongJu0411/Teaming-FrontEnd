@@ -406,10 +406,24 @@ export default function ChatRoom({ roomData }: ChatRoomProps) {
       {/* 자료실 모달 */}
       {dataRoomModalStatus && <DataRoom setModal={() => setDataRoomModalStatus(!dataRoomModalStatus)} />}
       {/* 과제 생성하기 모달 */}
-      {missionModalStatus && <CreateMission setModal={() => setMissionModalStatus(!missionModalStatus)} />}
+      {missionModalStatus && (
+        <CreateMission
+          setModal={() => setMissionModalStatus(!missionModalStatus)}
+          members={actualMembers} // 실제 방 멤버 정보 전달
+          roomId={roomData.id} // 방 ID 전달
+          onAssignmentCreated={() => {
+            // 과제 생성 완료 후 AssignmentRoom에서 새로고침하도록 신호
+            console.log("과제 생성 완료, AssignmentRoom 새로고침 필요");
+          }}
+        />
+      )}
       {/* 과제 확인하기 모달 */}
       {assignmentModalStatus && (
-        <AssignmentRoom setModal={() => setAssignmentModalStatus(!assignmentModalStatus)} roomId={roomData.id} />
+        <AssignmentRoom
+          setModal={() => setAssignmentModalStatus(!assignmentModalStatus)}
+          roomId={roomData.id}
+          members={actualMembers} // actualMembers가 빈 배열이라도 전달되어야 함
+        />
       )}
     </>
   );
