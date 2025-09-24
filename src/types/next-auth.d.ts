@@ -9,6 +9,7 @@ declare module "next-auth" {
       email: string;
       image?: string;
     };
+
     accessToken?: string;
     refreshToken?: string;
     provider?: string;
@@ -28,6 +29,8 @@ declare module "next-auth" {
     name: string;
     email: string;
     image?: string;
+    accessToken?: string;
+    refreshToken?: string;
   }
 }
 
