@@ -43,7 +43,7 @@ export default function AccountSection() {
   const [isEmailCodeSent, setIsEmailCodeSent] = useState<boolean>(false);
   const [showEmailChange, setShowEmailChange] = useState<boolean>(false);
 
-  // 회원정보 조회 API 함수
+  // 회원정보 조회 API 함수 - useCallback으로 메모이제이션하고 의존성을 명확히 지정
   const fetchUserInfo = useCallback(async (): Promise<void> => {
     try {
       setLoading(true);
@@ -102,7 +102,12 @@ export default function AccountSection() {
     } finally {
       setLoading(false);
     }
-  }, [session?.accessToken, session?.isBackendAuthenticated]);
+  }, [
+    session?.accessToken,
+    session?.isBackendAuthenticated,
+    session?.backendError?.hasError,
+    session?.backendError?.message,
+  ]);
 
   // 세션이 변경되면 회원정보 조회
   useEffect(() => {
@@ -114,8 +119,8 @@ export default function AccountSection() {
   // 소셜 로그인 여부 확인
   const isSocialLogin = session?.provider && ["google", "kakao", "naver"].includes(session.provider);
 
-  // 이메일 인증번호 발송 API
-  const sendEmailVerificationCode = async (): Promise<void> => {
+  // 이메일 인증번호 발송 API - useCallback으로 메모이제이션
+  const sendEmailVerificationCode = useCallback(async (): Promise<void> => {
     try {
       const token = session?.accessToken;
 
@@ -163,10 +168,10 @@ export default function AccountSection() {
       console.error("인증번호 발송 중 오류:", error);
       alert("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
     }
-  };
+  }, [session?.accessToken, session?.isBackendAuthenticated, newEmail]);
 
-  // 이메일 인증번호 확인 및 이메일 변경 API
-  const verifyEmailCodeAndUpdate = async (): Promise<void> => {
+  // 이메일 인증번호 확인 및 이메일 변경 API - useCallback으로 메모이제이션
+  const verifyEmailCodeAndUpdate = useCallback(async (): Promise<void> => {
     try {
       const token = session?.accessToken;
 
@@ -236,7 +241,7 @@ export default function AccountSection() {
       }
 
       // 성공 시 상태 업데이트
-      setUserInfo({ ...userInfo, email: newEmail });
+      setUserInfo((prev) => ({ ...prev, email: newEmail }));
       setNewEmail("");
       setEmailVerificationCode("");
       setIsEmailCodeSent(false);
@@ -246,10 +251,10 @@ export default function AccountSection() {
       console.error("이메일 변경 중 오류:", error);
       alert("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
     }
-  };
+  }, [session?.accessToken, session?.isBackendAuthenticated, newEmail, emailVerificationCode]);
 
-  // 비밀번호 변경 API 함수
-  const updatePassword = async (): Promise<void> => {
+  // 비밀번호 변경 API 함수 - useCallback으로 메모이제이션
+  const updatePassword = useCallback(async (): Promise<void> => {
     try {
       const token = session?.accessToken;
 
@@ -301,7 +306,7 @@ export default function AccountSection() {
       console.error("비밀번호 변경 중 오류:", error);
       alert("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
     }
-  };
+  }, [session?.accessToken, session?.isBackendAuthenticated, currentPassword, newPassword]);
 
   const handleEmailChange = (): void => {
     if (!newEmail.trim()) {

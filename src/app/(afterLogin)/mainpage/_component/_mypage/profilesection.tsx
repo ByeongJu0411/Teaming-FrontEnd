@@ -37,7 +37,7 @@ export default function ProfileSection() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 회원정보 조회 API 함수
+  // 회원정보 조회 API 함수 - useCallback으로 메모이제이션하고 의존성을 명확히 지정
   const fetchUserInfo = useCallback(async (): Promise<void> => {
     try {
       setLoading(true);
@@ -99,28 +99,15 @@ export default function ProfileSection() {
     } finally {
       setLoading(false);
     }
-  }, [session?.accessToken, session?.isBackendAuthenticated]);
+  }, [
+    session?.accessToken,
+    session?.isBackendAuthenticated,
+    session?.backendError?.hasError,
+    session?.backendError?.message,
+  ]);
 
-  // 세션이 변경되면 회원정보 조회
-  useEffect(() => {
-    if (session) {
-      fetchUserInfo();
-    }
-  }, [session, fetchUserInfo]);
-
-  const handleEditToggle = async (): Promise<void> => {
-    if (isEditMode) {
-      // 저장 로직 - 닉네임 변경 API 호출
-      await updateUserName();
-    } else {
-      // 수정 모드로 진입시 현재 닉네임으로 초기화
-      setEditNickname(userInfo.nickname);
-    }
-    setIsEditMode(!isEditMode);
-  };
-
-  // 사용자 이름 변경 API 함수
-  const updateUserName = async (): Promise<void> => {
+  // 사용자 이름 변경 API 함수 - useCallback으로 메모이제이션
+  const updateUserName = useCallback(async (): Promise<void> => {
     try {
       const token = session?.accessToken;
 
@@ -183,13 +170,31 @@ export default function ProfileSection() {
       }
 
       // 성공 시 로컬 상태 업데이트
-      setUserInfo({ ...userInfo, nickname: editNickname.trim() });
+      setUserInfo((prev) => ({ ...prev, nickname: editNickname.trim() }));
       console.log("이름 변경 성공:", editNickname);
       alert("이름이 성공적으로 변경되었습니다!");
     } catch (error) {
       console.error("이름 변경 중 오류:", error);
       alert("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
     }
+  }, [session?.accessToken, session?.isBackendAuthenticated, editNickname, userInfo.nickname]);
+
+  // 세션이 변경되면 회원정보 조회
+  useEffect(() => {
+    if (session) {
+      fetchUserInfo();
+    }
+  }, [session, fetchUserInfo]);
+
+  const handleEditToggle = async (): Promise<void> => {
+    if (isEditMode) {
+      // 저장 로직 - 닉네임 변경 API 호출
+      await updateUserName();
+    } else {
+      // 수정 모드로 진입시 현재 닉네임으로 초기화
+      setEditNickname(userInfo.nickname);
+    }
+    setIsEditMode(!isEditMode);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>): void => {
@@ -198,7 +203,7 @@ export default function ProfileSection() {
       // 추후 이미지 업로드 API 연결
       const reader = new FileReader();
       reader.onloadend = () => {
-        setUserInfo({ ...userInfo, profileImage: reader.result as string });
+        setUserInfo((prev) => ({ ...prev, profileImage: reader.result as string }));
       };
       reader.readAsDataURL(file);
     }
