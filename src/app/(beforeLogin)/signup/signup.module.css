@@ -59,3 +59,227 @@
 .header_back {
   cursor: pointer;
 }
+
+/* 공통 인풋 스타일 */
+.input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  margin-top: 16px;
+  font-size: 16px;
+  outline: none;
+  background-color: white;
+  box-sizing: border-box;
+}
+
+.input:first-of-type {
+  margin-top: 16px;
+}
+
+.input + .input {
+  margin-top: 12px;
+}
+
+.inputDisabled {
+  background-color: #f5f5f5;
+}
+
+.inputError {
+  border-color: #ff4444;
+}
+
+/* 공통 버튼 스타일 */
+.button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 12px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+.buttonPrimary {
+  background-color: #5227ff;
+  color: white;
+}
+
+.buttonSecondary {
+  background-color: #f5f5f5;
+  color: #666;
+  border: 1px solid #ddd;
+  padding: 8px;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.buttonDisabled {
+  background-color: #ccc;
+  color: white;
+  cursor: not-allowed;
+}
+
+/* Step 1: 환영 메시지 */
+.welcomeList {
+  margin-top: 20px;
+  font-size: 14px;
+  color: #888;
+}
+
+/* Step 2: 이메일 인증 */
+.verificationSection {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.testCode {
+  font-size: 12px;
+  color: #888;
+  margin-top: 8px;
+}
+
+.checkSection {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+}
+
+.input1 {
+  width: 80%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  margin-top: 12px;
+  font-size: 16px;
+  outline: none;
+  background-color: white;
+  box-sizing: border-box;
+}
+
+.button1 {
+  width: 15%;
+  padding: 12px;
+  margin-top: 12px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  box-sizing: border-box;
+}
+
+.successMessage {
+  margin-top: 16px;
+  padding: 12px;
+  background-color: #e8f5e8;
+  border-radius: 8px;
+  color: #2e7d2e;
+}
+
+/* Step 3: 비밀번호 */
+.errorText {
+  color: #ff4444;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.successText {
+  color: #5227ff;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.passwordGuide {
+  font-size: 12px;
+  color: #888;
+  margin-top: 12px;
+}
+
+/* Step 4: 닉네임 */
+.characterCount {
+  font-size: 12px;
+  color: #888;
+  margin-top: 8px;
+  text-align: right;
+}
+
+.nicknamePreview {
+  margin-top: 16px;
+  padding: 12px;
+  background-color: #f0f8ff;
+  border-radius: 8px;
+}
+
+.nicknamePreview p {
+  margin: 0;
+  color: #5227ff;
+}
+
+.nicknameGuide {
+  font-size: 12px;
+  color: #888;
+  margin-top: 12px;
+}
+
+/* Step 5: 프로필 사진 */
+.profileImageContainer {
+  width: 120px;
+  height: 120px;
+  margin: 20px auto;
+  border: 2px solid #ddd;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background-color: #f9f9f9;
+}
+
+.profileImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.fileLabel {
+  display: block;
+  text-align: center;
+  margin-top: 16px;
+  cursor: pointer;
+}
+
+.profileTip {
+  font-size: 12px;
+  color: #888;
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.profileTipTitle {
+  margin: 0 0 8px 0;
+  font-weight: 500;
+}
+
+/* Step 6: 완료 */
+.completionStep {
+  text-align: center;
+}
+
+.completionEmoji {
+  font-size: 48px;
+  margin-bottom: 20px;
+}
+
+.startButton {
+  padding: 16px;
+  margin-top: 24px;
+  font-weight: 500;
+}
