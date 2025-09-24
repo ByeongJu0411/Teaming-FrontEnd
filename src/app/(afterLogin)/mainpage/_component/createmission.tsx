@@ -37,10 +37,10 @@ const CreateMission = ({ setModal, members = [], roomId, onAssignmentCreated }: 
   const [isLoading, setIsLoading] = useState(false);
   const [dueDate, setDueDate] = useState({
     year: "2025",
-    month: "09",
-    day: "07",
-    hour: "07",
-    minute: "00",
+    month: "01",
+    day: "01",
+    hour: "23",
+    minute: "59",
   });
 
   const preventOffModal = (event: React.MouseEvent) => {
@@ -172,7 +172,7 @@ const CreateMission = ({ setModal, members = [], roomId, onAssignmentCreated }: 
             <label className={styles.sectionTitle}>과제 제목</label>
             <input
               type="text"
-              placeholder="자료조사 2장 과제부여"
+              placeholder="과제 제목을 입력하세요"
               value={missionTitle}
               onChange={(e) => setMissionTitle(e.target.value)}
               className={styles.titleInput}
@@ -183,7 +183,7 @@ const CreateMission = ({ setModal, members = [], roomId, onAssignmentCreated }: 
           <div className={styles.section}>
             <label className={styles.sectionTitle}>과제 설명</label>
             <textarea
-              placeholder="자료조사를 하셨다면 한 장정도 과제를 부여합니다.&#10;과제시간에 맞춰서 과제 제출해주시면 감사하겠습니다."
+              placeholder="과제에 대한 설명을 입력하세요"
               value={missionDescription}
               onChange={(e) => setMissionDescription(e.target.value)}
               className={styles.descriptionTextarea}
@@ -257,6 +257,7 @@ const CreateMission = ({ setModal, members = [], roomId, onAssignmentCreated }: 
                   onChange={(e) => setDueDate((prev) => ({ ...prev, year: e.target.value }))}
                   className={styles.dateSelect}
                 >
+                  <option value="2024">2024</option>
                   <option value="2025">2025</option>
                   <option value="2026">2026</option>
                 </select>

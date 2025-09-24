@@ -27,7 +27,7 @@ interface Member {
 
 interface ModalProps {
   setModal: () => void;
-  roomId: string;
+  roomId: number; // string에서 number로 변경
   members: RoomMember[]; // optional을 제거하고 필수로 변경
 }
 
@@ -39,8 +39,9 @@ interface Assignment {
   creator: string;
   assignedMembers: string[];
   dueDate: string;
-  status: "진행중" | "완료" | "마감";
+  status: "진행중" | "완료" | "마감" | "취소"; // 취소 상태 추가
   createdAt: string;
+  isCancelled?: boolean; // 취소 여부 플래그 추가
   submissions: {
     memberId: string;
     memberName: string;
@@ -74,7 +75,7 @@ const AssignmentRoom = ({ setModal, roomId, members }: ModalProps) => {
   const [submissionText, setSubmissionText] = useState("");
   const [submissionFiles, setSubmissionFiles] = useState<File[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [isLoading, setIsLoading] = useState(false); // 로딩 상태 추가
+  const [, setIsLoading] = useState(false); // 로딩 상태 추가
 
   // 실제 방 멤버를 AssignmentDetail에서 사용하는 형식으로 변환
   const convertedMembers: Member[] = Array.isArray(members)
@@ -110,7 +111,7 @@ const AssignmentRoom = ({ setModal, roomId, members }: ModalProps) => {
       formData.append("description", data.text);
 
       // 파일들을 FormData에 추가
-      data.files.forEach((file, index) => {
+      data.files.forEach((file) => {
         formData.append(`files`, file); // 또는 files[${index}] 형식
       });
 
@@ -156,6 +157,7 @@ const AssignmentRoom = ({ setModal, roomId, members }: ModalProps) => {
         if (responseText) {
           try {
             result = JSON.parse(responseText);
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (parseError) {
             console.warn("JSON 파싱 실패, 하지만 제출은 성공:", responseText);
           }
@@ -237,7 +239,7 @@ const AssignmentRoom = ({ setModal, roomId, members }: ModalProps) => {
     }
   };
 
-  const handleAssignmentSelect = (assignment: Assignment) => {
+  const handleAssignmentSelect = (assignment: Assignment | null) => {
     setSelectedAssignment(assignment);
   };
 
@@ -245,8 +247,19 @@ const AssignmentRoom = ({ setModal, roomId, members }: ModalProps) => {
     setShowSubmissionModal(true);
   };
 
-  // 과제 생성 완료 시 새로고침
-  const handleAssignmentCreated = () => {
+  // 과제 업데이트 핸들러 (취소 시 호출)
+  const handleAssignmentUpdate = (updatedAssignment: Assignment) => {
+    console.log("handleAssignmentUpdate 호출됨:", updatedAssignment);
+
+    // 선택된 과제 업데이트 - 즉시 반영
+    if (selectedAssignment?.id === updatedAssignment.id) {
+      setSelectedAssignment(updatedAssignment);
+    }
+
+    // 취소된 과제는 선택 해제하지 않고 상태만 업데이트하여 UI에 바로 반영
+    // setSelectedAssignment(null); // 이 부분을 제거하여 Detail 화면 유지
+
+    // AssignmentList 새로고침을 위해 refreshTrigger 업데이트
     setRefreshTrigger((prev) => prev + 1);
   };
 
@@ -282,6 +295,8 @@ const AssignmentRoom = ({ setModal, roomId, members }: ModalProps) => {
             onSubmitClick={handleSubmitClick}
             onViewSubmission={handleViewSubmission}
             canSubmit={canSubmit}
+            roomId={roomId}
+            onAssignmentUpdate={handleAssignmentUpdate}
           />
         </div>
 
@@ -295,7 +310,7 @@ const AssignmentRoom = ({ setModal, roomId, members }: ModalProps) => {
             setSubmissionText={setSubmissionText}
             submissionFiles={submissionFiles}
             setSubmissionFiles={setSubmissionFiles}
-            roomId={roomId} // roomId 전달
+            roomId={roomId} // roomId를 string으로 변환하여 전달
             onSuccess={() => {
               // 제출 성공 시 새로고침
               setRefreshTrigger((prev) => prev + 1);

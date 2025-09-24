@@ -11,8 +11,9 @@ interface Assignment {
   creator: string;
   assignedMembers: string[];
   dueDate: string;
-  status: "진행중" | "완료" | "마감";
+  status: "진행중" | "완료" | "마감" | "취소"; // 취소 상태 추가
   createdAt: string;
+  isCancelled?: boolean; // 취소 여부 플래그 추가
   submissions: {
     memberId: string;
     memberName: string;
@@ -38,7 +39,7 @@ interface SubmissionModalProps {
   setSubmissionText: (text: string) => void;
   submissionFiles: File[];
   setSubmissionFiles: React.Dispatch<React.SetStateAction<File[]>>;
-  roomId: string; // roomId 추가
+  roomId: number; // roomId 추가
   onSuccess?: () => void; // 성공 시 콜백 추가
 }
 
@@ -105,33 +106,26 @@ const SubmissionModal: React.FC<SubmissionModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      // API 스펙에 맞는 FormData 구성
-      const formData = new FormData();
-
-      // assignmentId와 description을 FormData에 추가
-      formData.append("assignmentId", assignment.id);
-      formData.append("description", submissionText.trim());
-
-      // 파일들을 FormData에 추가
-      submissionFiles.forEach((file) => {
-        formData.append("files", file);
-      });
+      // API 스펙에 맞는 JSON 데이터 구성
+      const submissionData = {
+        assignmentId: parseInt(assignment.id), // number 형식으로 변환
+        description: submissionText.trim(),
+        fileIds: [], // 현재는 파일 업로드 기능이 없으므로 빈 배열
+      };
 
       console.log("과제 제출 요청:");
       console.log("- roomId:", roomId);
-      console.log("- assignmentId:", assignment.id);
-      console.log("- description:", submissionText.trim());
-      console.log("- files:", submissionFiles);
+      console.log("- submissionData:", submissionData);
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080"}/rooms/${roomId}/assignment/submit`,
         {
           method: "POST",
           headers: {
+            "Content-Type": "application/json",
             Authorization: `Bearer ${session.accessToken}`,
-            // multipart/form-data의 경우 Content-Type을 명시하지 않음 (브라우저가 자동 설정)
           },
-          body: formData,
+          body: JSON.stringify(submissionData),
         }
       );
 
@@ -144,6 +138,8 @@ const SubmissionModal: React.FC<SubmissionModalProps> = ({
           throw new Error("과제 제출 권한이 없습니다.");
         } else if (response.status === 404) {
           throw new Error("존재하지 않는 과제입니다.");
+        } else if (response.status === 405) {
+          throw new Error("서버에서 이 방법을 지원하지 않습니다. API 엔드포인트를 확인해주세요.");
         } else {
           const errorText = await response.text();
           console.error("과제 제출 API 오류:", errorText);
@@ -205,7 +201,7 @@ const SubmissionModal: React.FC<SubmissionModalProps> = ({
       <div className={styles.submissionModal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.submissionHeader}>
           <h3>과제 제출하기</h3>
-          <button className={styles.closeButton} onClick={onClose}>
+          <button className={styles.cancelButton} onClick={onClose} disabled={isSubmitting}>
             <FiX size={20} />
           </button>
         </div>
