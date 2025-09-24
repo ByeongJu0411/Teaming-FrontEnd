@@ -273,3 +273,112 @@
 .submissionContent::-webkit-scrollbar-thumb:hover {
   background: #666;
 }
+
+/* AssignmentDetail.module.css에 추가할 스타일 */
+
+.assignmentDetail.cancelled {
+  opacity: 0.7;
+}
+
+.cancelledBanner {
+  background-color: rgba(107, 114, 128, 0.1);
+  border: 1px solid #6b7280;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.cancelledText {
+  color: #9ca3af;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.detailHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.cancelButton {
+  background: transparent;
+  border: 1px solid #ef4444;
+  border-radius: 6px;
+  color: #ef4444;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+  height: 32px;
+  transition: all 0.2s ease;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.cancelButton:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
+.cancelButton:active {
+  background-color: rgba(239, 68, 68, 0.2);
+}
+
+.cancelButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cancelButton.cancelling {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+}
+
+.loadingSpinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #666;
+  border-top: 2px solid #ef4444;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .detailHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .headerActions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .cancelButton {
+    min-width: 100px;
+  }
+}

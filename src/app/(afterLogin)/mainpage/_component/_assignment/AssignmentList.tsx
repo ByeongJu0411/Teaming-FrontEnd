@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { FiClock, FiUser } from "react-icons/fi";
 import styles from "./AssignmentList.module.css";
@@ -11,7 +11,11 @@ interface AssignmentApiResponse {
   description: string;
   assignedMemberIds: number[];
   due: string;
-  status: "IN_PROGRESS" | "COMPLETED" | "OVERDUE";
+  status: "IN_PROGRESS" | "COMPLETED" | "OVERDUE" | "CANCELED";
+  creatorId?: number;
+  creatorName?: string;
+  createdAt?: string;
+  isCancelled?: boolean;
   submissions: {
     submitterId: number;
     description: string;
@@ -27,6 +31,22 @@ interface AssignmentApiResponse {
   }[];
 }
 
+// 제출 현황 타입
+interface SubmissionStatus {
+  memberId: string;
+  memberName: string;
+  submittedAt?: string;
+  status: "대기" | "제출완료";
+  submissionData?: {
+    text: string;
+    files: {
+      name: string;
+      size: number;
+      url?: string;
+    }[];
+  };
+}
+
 // 컴포넌트에서 사용할 타입
 interface Assignment {
   id: string;
@@ -35,22 +55,10 @@ interface Assignment {
   creator: string;
   assignedMembers: string[];
   dueDate: string;
-  status: "진행중" | "완료" | "마감";
+  status: "진행중" | "완료" | "마감" | "취소";
   createdAt: string;
-  submissions: {
-    memberId: string;
-    memberName: string;
-    submittedAt?: string;
-    status: "대기" | "제출완료";
-    submissionData?: {
-      text: string;
-      files: {
-        name: string;
-        size: number;
-        url?: string;
-      }[];
-    };
-  }[];
+  submissions: SubmissionStatus[];
+  isCancelled?: boolean;
 }
 
 interface Member {
@@ -60,101 +68,143 @@ interface Member {
 }
 
 interface AssignmentListProps {
-  roomId?: string;
+  roomId?: number;
   selectedAssignment: Assignment | null;
-  onAssignmentSelect: (assignment: Assignment) => void;
+  onAssignmentSelect: (assignment: Assignment | null) => void;
   members: Member[];
+  refreshTrigger?: number;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080";
 
-const AssignmentList: React.FC<AssignmentListProps> = ({ roomId, selectedAssignment, onAssignmentSelect, members }) => {
+const AssignmentList: React.FC<AssignmentListProps> = ({
+  roomId,
+  selectedAssignment,
+  onAssignmentSelect,
+  members,
+  refreshTrigger,
+}) => {
   const { data: session } = useSession();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // roomId 변환
-  console.log("AssignmentList: roomId 변환 과정:");
-  console.log("- 원본 roomId:", roomId, "타입:", typeof roomId);
+  // 취소된 과제 ID들을 로컬스토리지에서 관리
+  const getCancelledAssignments = useCallback((): string[] => {
+    if (typeof window === "undefined") return [];
+    const cancelled = localStorage.getItem("cancelledAssignments");
+    return cancelled ? JSON.parse(cancelled) : [];
+  }, []);
 
-  const currentRoomId = roomId && roomId !== "test-room" ? parseInt(roomId, 10) : null;
+  // API 응답을 컴포넌트 형식으로 변환 - useCallback으로 메모이제이션
+  const transformApiResponse = useCallback(
+    (apiData: AssignmentApiResponse): Assignment => {
+      // 과제에 할당된 멤버들의 제출 현황 생성
+      const submissions: SubmissionStatus[] = apiData.assignedMemberIds.map((memberId) => {
+        const member = members.find((m) => m.id === memberId.toString());
+        const memberName = member?.name || `사용자 ${memberId}`;
+        const memberSubmission = apiData.submissions.find((submission) => submission.submitterId === memberId);
 
-  console.log("- 변환된 currentRoomId:", currentRoomId, "타입:", typeof currentRoomId);
-  console.log("- isNaN check:", isNaN(currentRoomId as number));
+        if (memberSubmission) {
+          return {
+            memberId: memberId.toString(),
+            memberName,
+            submittedAt: memberSubmission.updatedAt,
+            status: "제출완료" as const,
+            submissionData: {
+              text: memberSubmission.description,
+              files: memberSubmission.files.map((file) => ({
+                name: file.fileName,
+                size: file.fileSize,
+                url: undefined,
+              })),
+            },
+          };
+        } else {
+          return {
+            memberId: memberId.toString(),
+            memberName,
+            status: "대기" as const,
+          };
+        }
+      });
 
-  // API 응답을 컴포넌트 형식으로 변환
-  const transformApiResponse = (apiData: AssignmentApiResponse): Assignment => {
-    const getKoreanStatus = (status: string) => {
-      switch (status) {
-        case "COMPLETED":
+      // 상태 결정 로직
+      const getKoreanStatus = (
+        apiData: AssignmentApiResponse,
+        submissions: SubmissionStatus[]
+      ): "진행중" | "완료" | "마감" | "취소" => {
+        // 서버에서 취소 상태를 제공하는 경우 우선 확인
+        if (apiData.status === "CANCELED" || apiData.isCancelled) {
+          return "취소";
+        }
+
+        const completedCount = submissions.filter((s) => s.status === "제출완료").length;
+        const totalCount = submissions.length;
+        const completionRate = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+
+        // 현재 시간과 마감일 비교
+        const now = new Date();
+        const dueDate = new Date(apiData.due);
+        const isOverdue = dueDate < now;
+
+        // 상태 결정 우선순위
+        if (completionRate === 100) {
           return "완료";
-        case "OVERDUE":
+        } else if (isOverdue) {
           return "마감";
-        case "IN_PROGRESS":
-        default:
+        } else {
           return "진행중";
-      }
-    };
+        }
+      };
 
-    const submissions = apiData.assignedMemberIds.map((memberId) => {
-      const member = members.find((m) => m.id === memberId.toString());
-      const memberName = member?.name || `사용자 ${memberId}`;
+      // 과제 생성자 이름 찾기
+      const getCreatorName = (apiData: AssignmentApiResponse): string => {
+        if (apiData.creatorName) {
+          return apiData.creatorName;
+        }
 
-      const memberSubmission = apiData.submissions.find((submission) => submission.submitterId === memberId);
+        if (apiData.creatorId) {
+          const creator = members.find((m) => m.id === apiData.creatorId?.toString());
+          if (creator) {
+            return creator.name;
+          }
+        }
 
-      if (memberSubmission) {
-        return {
-          memberId: memberId.toString(),
-          memberName,
-          submittedAt: memberSubmission.updatedAt,
-          status: "제출완료" as const,
-          submissionData: {
-            text: memberSubmission.description,
-            files: memberSubmission.files.map((file) => ({
-              name: file.fileName,
-              size: file.fileSize,
-              url: undefined,
-            })),
-          },
-        };
-      } else {
-        return {
-          memberId: memberId.toString(),
-          memberName,
-          status: "대기" as const,
-        };
-      }
-    });
+        return "담당자";
+      };
 
-    return {
-      id: apiData.assignmentId.toString(),
-      title: apiData.title,
-      description: apiData.description,
-      creator: "담당자",
-      assignedMembers: apiData.assignedMemberIds.map((id) => id.toString()),
-      dueDate: apiData.due,
-      status: getKoreanStatus(apiData.status),
-      createdAt: apiData.submissions.length > 0 ? apiData.submissions[0].createdAt : new Date().toISOString(),
-      submissions,
-    };
-  };
+      return {
+        id: apiData.assignmentId.toString(),
+        title: apiData.title,
+        description: apiData.description,
+        creator: getCreatorName(apiData),
+        assignedMembers: apiData.assignedMemberIds.map((id) => id.toString()),
+        dueDate: apiData.due,
+        status: getKoreanStatus(apiData, submissions),
+        createdAt:
+          apiData.createdAt ||
+          (apiData.submissions.length > 0 ? apiData.submissions[0].createdAt : new Date().toISOString()),
+        submissions,
+        isCancelled: apiData.status === "CANCELED" || apiData.isCancelled || false,
+      };
+    },
+    [members]
+  );
 
-  // 과제 목록 API 호출
-  const loadAssignments = async () => {
+  // 과제 목록 API 호출 - useCallback으로 메모이제이션
+  const loadAssignments = useCallback(async (): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
 
-      // roomId 유효성 검사
-      if (!currentRoomId || isNaN(currentRoomId)) {
+      if (!roomId || isNaN(roomId)) {
         setError("유효한 방 ID가 필요합니다.");
         setAssignments([]);
         setLoading(false);
         return;
       }
 
-      // 토큰 검사
       const token = session?.accessToken;
       if (!token) {
         throw new Error("인증 토큰이 없습니다.");
@@ -164,22 +214,15 @@ const AssignmentList: React.FC<AssignmentListProps> = ({ roomId, selectedAssignm
         throw new Error("백엔드 인증이 완료되지 않았습니다.");
       }
 
-      console.log("AssignmentList: API 호출 시작 - roomId:", currentRoomId);
-      console.log("AssignmentList: API URL:", `${API_BASE_URL}/rooms/${currentRoomId}/assignment`);
-
-      const response = await fetch(`${API_BASE_URL}/rooms/${currentRoomId}/assignment`, {
+      const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/assignment`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      console.log("AssignmentList: Response status:", response.status);
-
       if (!response.ok) {
         if (response.status === 400) {
-          // 400 에러의 경우 빈 배열로 처리
-          console.warn("AssignmentList: 400 에러 - 빈 과제 목록으로 처리");
           setAssignments([]);
           setError("아직 만들어진 과제가 없습니다.");
           setLoading(false);
@@ -192,11 +235,11 @@ const AssignmentList: React.FC<AssignmentListProps> = ({ roomId, selectedAssignm
       }
 
       const responseText = await response.text();
-      console.log("AssignmentList: Raw response:", responseText);
-
       let data: AssignmentApiResponse[];
+
       try {
         data = JSON.parse(responseText);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (parseError) {
         throw new Error("서버 응답을 파싱할 수 없습니다.");
       }
@@ -205,7 +248,19 @@ const AssignmentList: React.FC<AssignmentListProps> = ({ roomId, selectedAssignm
         throw new Error("서버 응답이 배열 형식이 아닙니다.");
       }
 
-      const transformedAssignments = data.map(transformApiResponse);
+      const transformedAssignments = data.map((apiData) => {
+        const assignment = transformApiResponse(apiData);
+
+        // 로컬스토리지에서 취소 상태 확인
+        const cancelledIds = getCancelledAssignments();
+        if (cancelledIds.includes(assignment.id)) {
+          assignment.isCancelled = true;
+          assignment.status = "취소";
+        }
+
+        return assignment;
+      });
+
       setAssignments(transformedAssignments);
     } catch (error) {
       console.error("AssignmentList: 과제 로드 실패:", error);
@@ -214,33 +269,26 @@ const AssignmentList: React.FC<AssignmentListProps> = ({ roomId, selectedAssignm
     } finally {
       setLoading(false);
     }
-  };
+  }, [roomId, session, transformApiResponse, getCancelledAssignments]);
 
   // roomId나 세션이 변경될 때 API 호출
   useEffect(() => {
-    console.log("AssignmentList useEffect 실행:");
-    console.log("- session:", !!session);
-    console.log("- session.isBackendAuthenticated:", session?.isBackendAuthenticated);
-    console.log("- currentRoomId:", currentRoomId);
-    console.log("- roomId 원본:", roomId);
-
-    if (session && session.isBackendAuthenticated && currentRoomId) {
-      console.log("API 호출 조건 만족 - loadAssignments 실행");
+    if (session && session.isBackendAuthenticated && roomId) {
       loadAssignments();
-    } else {
-      console.log("API 호출 조건 불만족:");
-      console.log("  session:", !!session);
-      console.log("  isBackendAuthenticated:", session?.isBackendAuthenticated);
-      console.log("  currentRoomId:", currentRoomId);
-
-      if (!currentRoomId) {
-        setError("유효한 방 ID가 필요합니다.");
-        setLoading(false);
-      }
+    } else if (!roomId) {
+      setError("유효한 방 ID가 필요합니다.");
+      setLoading(false);
     }
-  }, [currentRoomId, session]);
+  }, [session, roomId, loadAssignments]);
 
-  const formatDateShort = (dateString: string) => {
+  // refreshTrigger가 변경되면 새로고침
+  useEffect(() => {
+    if (refreshTrigger && refreshTrigger > 0 && session && session.isBackendAuthenticated && roomId) {
+      loadAssignments();
+    }
+  }, [refreshTrigger, session, roomId, loadAssignments]);
+
+  const formatDateShort = (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleDateString("ko-KR", {
       month: "short",
@@ -250,23 +298,25 @@ const AssignmentList: React.FC<AssignmentListProps> = ({ roomId, selectedAssignm
     });
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): string => {
     switch (status) {
       case "완료":
         return "#10b981";
       case "마감":
         return "#ef4444";
+      case "취소":
+        return "#6b7280";
       default:
         return "#3b82f6";
     }
   };
 
-  const getMemberAvatar = (memberId: string) => {
+  const getMemberAvatar = (memberId: string): string => {
     const member = members.find((m) => m.id === memberId);
     return member?.avatar || "👤";
   };
 
-  const getCompletionRate = (assignment: Assignment) => {
+  const getCompletionRate = (assignment: Assignment): number => {
     if (assignment.submissions.length === 0) return 0;
     const completed = assignment.submissions.filter((s) => s.status === "제출완료").length;
     return Math.round((completed / assignment.submissions.length) * 100);
@@ -314,14 +364,24 @@ const AssignmentList: React.FC<AssignmentListProps> = ({ roomId, selectedAssignm
           assignments.map((assignment) => (
             <div
               key={assignment.id}
-              className={`${styles.assignmentCard} ${selectedAssignment?.id === assignment.id ? styles.selected : ""}`}
-              onClick={() => onAssignmentSelect(assignment)}
+              className={`${styles.assignmentCard} ${assignment.isCancelled ? styles.cancelled : ""} ${
+                selectedAssignment?.id === assignment.id ? styles.selected : ""
+              }`}
+              onClick={() => !assignment.isCancelled && onAssignmentSelect(assignment)}
             >
+              {assignment.isCancelled && (
+                <div className={styles.cancelledOverlay}>
+                  <div className={styles.cancelledText}>취소됨</div>
+                </div>
+              )}
+
               <div className={styles.cardHeader}>
                 <h4 className={styles.assignmentTitle}>{assignment.title}</h4>
-                <span className={styles.statusBadge} style={{ backgroundColor: getStatusColor(assignment.status) }}>
-                  {assignment.status}
-                </span>
+                <div className={styles.cardHeaderActions}>
+                  <span className={styles.statusBadge} style={{ backgroundColor: getStatusColor(assignment.status) }}>
+                    {assignment.status}
+                  </span>
+                </div>
               </div>
 
               <div className={styles.cardInfo}>

@@ -1,5 +1,6 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
+import { useSession } from "next-auth/react";
 import { FiCheckCircle, FiCircle } from "react-icons/fi";
 import styles from "./AssignmentDetail.module.css";
 
@@ -10,8 +11,9 @@ interface Assignment {
   creator: string;
   assignedMembers: string[];
   dueDate: string;
-  status: "진행중" | "완료" | "마감";
+  status: "진행중" | "완료" | "마감" | "취소";
   createdAt: string;
+  isCancelled?: boolean;
   submissions: {
     memberId: string;
     memberName: string;
@@ -40,7 +42,11 @@ interface AssignmentDetailProps {
   onSubmitClick: () => void;
   onViewSubmission: (submission: Assignment["submissions"][0]) => void;
   canSubmit: (assignment: Assignment) => boolean;
+  roomId: number; // string에서 number로 변경
+  onAssignmentUpdate?: (updatedAssignment: Assignment) => void;
 }
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080";
 
 const AssignmentDetail: React.FC<AssignmentDetailProps> = ({
   assignment,
@@ -48,7 +54,12 @@ const AssignmentDetail: React.FC<AssignmentDetailProps> = ({
   onSubmitClick,
   onViewSubmission,
   canSubmit,
+  roomId,
+  onAssignmentUpdate,
 }) => {
+  const { data: session } = useSession();
+  const [isCancelling, setIsCancelling] = useState(false);
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("ko-KR", {
@@ -76,6 +87,8 @@ const AssignmentDetail: React.FC<AssignmentDetailProps> = ({
         return "#10b981";
       case "마감":
         return "#ef4444";
+      case "취소":
+        return "#6b7280";
       default:
         return "#3b82f6";
     }
@@ -84,6 +97,68 @@ const AssignmentDetail: React.FC<AssignmentDetailProps> = ({
   const getMemberAvatar = (memberId: string) => {
     const member = members.find((m) => m.id === memberId);
     return member?.avatar || "👤";
+  };
+
+  // 과제 취소 API 호출
+  const cancelAssignment = async (): Promise<void> => {
+    if (!assignment || !session?.accessToken || !session?.isBackendAuthenticated) {
+      alert("인증이 필요합니다.");
+      return;
+    }
+
+    const confirmCancel = window.confirm("정말로 이 과제를 취소하시겠습니까?");
+    if (!confirmCancel) return;
+
+    setIsCancelling(true);
+
+    try {
+      console.log("과제 취소 요청:", { roomId, assignmentId: assignment.id });
+
+      // roomId는 이미 number이므로 바로 사용
+      const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/assignment/${assignment.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${session.accessToken}`,
+        },
+      });
+
+      console.log("과제 취소 API 응답 상태:", response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("과제 취소 API 오류 응답:", errorText);
+
+        if (response.status === 401) {
+          throw new Error("인증이 만료되었습니다. 다시 로그인해주세요.");
+        } else if (response.status === 403) {
+          throw new Error("과제 취소 권한이 없습니다.");
+        } else if (response.status === 404) {
+          throw new Error("존재하지 않는 과제입니다.");
+        } else {
+          throw new Error(`서버 오류가 발생했습니다. (${response.status}): ${errorText}`);
+        }
+      }
+
+      // 성공 시 과제 상태 업데이트
+      const updatedAssignment = {
+        ...assignment,
+        isCancelled: true,
+        status: "취소" as const,
+      };
+
+      // 부모 컴포넌트에 업데이트된 과제 정보 전달
+      if (onAssignmentUpdate) {
+        onAssignmentUpdate(updatedAssignment);
+        console.log("onAssignmentUpdate 호출됨:", updatedAssignment);
+      }
+
+      alert("과제가 취소되었습니다.");
+    } catch (error) {
+      console.error("과제 취소 실패:", error);
+      alert(`과제 취소에 실패했습니다:\n${error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다."}`);
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   if (!assignment) {
@@ -99,12 +174,23 @@ const AssignmentDetail: React.FC<AssignmentDetailProps> = ({
   }
 
   return (
-    <div className={styles.assignmentDetail}>
+    <div className={`${styles.assignmentDetail} ${assignment.isCancelled ? styles.cancelled : ""}`}>
       <div className={styles.detailHeader}>
         <h3>{assignment.title}</h3>
         <span className={styles.statusBadge} style={{ backgroundColor: getStatusColor(assignment.status) }}>
           {assignment.status}
         </span>
+        <div className={styles.headerActions}>
+          {!assignment.isCancelled && (
+            <button
+              className={`${styles.cancelButton} ${isCancelling ? styles.cancelling : ""}`}
+              onClick={cancelAssignment}
+              disabled={isCancelling}
+            >
+              {isCancelling ? <div className={styles.loadingSpinner}></div> : "과제 취소"}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className={styles.detailContent}>
@@ -138,7 +224,7 @@ const AssignmentDetail: React.FC<AssignmentDetailProps> = ({
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <h4 className={styles.sectionTitle}>제출 현황</h4>
-            {canSubmit(assignment) && (
+            {canSubmit(assignment) && !assignment.isCancelled && (
               <button className={styles.submitButton} onClick={onSubmitClick}>
                 과제 제출하기
               </button>
