@@ -1,5 +1,5 @@
-/* eslint-disable @next/next/no-img-element */
 import React from "react";
+import Image from "next/image";
 import styles from "./chatmessage.module.css";
 
 interface ChatMessage {
@@ -8,8 +8,8 @@ interface ChatMessage {
   senderId: number;
   senderName: string;
   timestamp: string;
-  messageType: "TEXT" | "IMAGE" | "FILE" | "SYSTEM";
-  readBy: number[]; // 읽음 상태 추가
+  messageType: "TEXT" | "IMAGE" | "FILE" | "VIDEO" | "AUDIO" | "SYSTEM" | "SYSTEM_NOTICE";
+  readBy: number[];
 }
 
 interface ChatMessageProps {
@@ -17,7 +17,7 @@ interface ChatMessageProps {
   currentUserId: number;
   showSenderName?: boolean;
   isLastMessage?: boolean;
-  allUsers: Array<{ id: number; name: string; avatar: string }>; // 전체 사용자 목록
+  allUsers: Array<{ id: number; name: string; avatar: string }>;
   hoveredMessage: number | null;
   setHoveredMessage: (id: number | null) => void;
 }
@@ -32,15 +32,12 @@ export default function ChatMessage({
   setHoveredMessage,
 }: ChatMessageProps) {
   const isMyMessage = message.senderId === currentUserId;
-  const isSystemMessage = message.messageType === "SYSTEM";
+  const isSystemMessage = message.messageType === "SYSTEM" || message.messageType === "SYSTEM_NOTICE";
 
   // 안 읽은 사용자 계산 함수
   const getUnreadUsers = (message: ChatMessage) => {
     return allUsers.filter(
-      (user) =>
-        user.id !== message.senderId &&
-        user.id !== currentUserId && // 추가 안전장치
-        !message.readBy.includes(user.id)
+      (user) => user.id !== message.senderId && user.id !== currentUserId && !message.readBy.includes(user.id)
     );
   };
 
@@ -90,12 +87,32 @@ export default function ChatMessage({
               onMouseLeave={() => setHoveredMessage(null)}
             >
               {message.messageType === "TEXT" && <span className={styles.messageText}>{message.content}</span>}
+
               {message.messageType === "IMAGE" && (
-                <img src={message.content} alt="첨부 이미지" className={styles.messageImage} />
+                <Image
+                  src={message.content}
+                  alt="첨부 이미지"
+                  width={200}
+                  height={200}
+                  className={styles.messageImage}
+                />
               )}
+
               {message.messageType === "FILE" && (
                 <div className={styles.messageFile}>
                   <span>📎 {message.content}</span>
+                </div>
+              )}
+
+              {message.messageType === "VIDEO" && (
+                <div className={styles.messageFile}>
+                  <span>🎥 {message.content}</span>
+                </div>
+              )}
+
+              {message.messageType === "AUDIO" && (
+                <div className={styles.messageFile}>
+                  <span>🎵 {message.content}</span>
                 </div>
               )}
             </div>
