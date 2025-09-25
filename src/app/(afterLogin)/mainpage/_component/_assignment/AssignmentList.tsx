@@ -214,7 +214,7 @@ const AssignmentList: React.FC<AssignmentListProps> = ({
         throw new Error("백엔드 인증이 완료되지 않았습니다.");
       }
 
-      const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/assignment`, {
+      const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/assignments`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,

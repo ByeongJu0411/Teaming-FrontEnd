@@ -86,7 +86,7 @@ const CreateMission = ({ setModal, members = [], roomId, onAssignmentCreated }: 
       console.log("과제 생성 요청:", missionData);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080"}/rooms/${roomId}/assignment`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080"}/rooms/${roomId}/assignments`,
         {
           method: "POST",
           headers: {

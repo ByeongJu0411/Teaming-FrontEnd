@@ -1,5 +1,5 @@
 "use client";
-import { useState, ChangeEvent, JSX } from "react";
+import { useState, ChangeEvent } from "react";
 import Image from "next/image";
 import styles from "./createroom.module.css";
 import { useSession } from "next-auth/react";
@@ -149,7 +149,7 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
   const [roomTitle, setRoomTitle] = useState<string>("");
   const [roomSubTitle, setRoomSubTitle] = useState<string>("");
   const [selectedRoom, setSelectedRoom] = useState<string>("");
-  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [, setProfileImage] = useState<File | null>(null);
   const [profileImagePreview, setProfileImagePreview] = useState<string>("/basicProfile.webp");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showModal, setShowModal] = useState<boolean>(false);
@@ -332,22 +332,6 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
     }
   };
 
-  // teamCount만큼 초대 입력 섹션을 렌더링
-  const renderInviteSections = (): JSX.Element[] => {
-    return Array.from({ length: teamCount }, (_, index) => (
-      <div key={index} className={styles.inviteInputSection}>
-        <input
-          className={styles.inviteInputUpdated}
-          placeholder={`팀원 ${index + 1}의 이메일을 입력해주세요.`}
-          type="email"
-        />
-        <button className={styles.inviteButton} type="button">
-          초대코드 발송
-        </button>
-      </div>
-    ));
-  };
-
   return (
     <div className={styles.createRoom}>
       <p className={styles.titleUpdated}>티밍룸 생성</p>
@@ -469,11 +453,6 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
             <p className={styles.noticeSubtext}>만약 패널티를 받지 않는다면 이후 완료 후에 전액 환불됩니다.</p>
           </div>
         </div>
-      </div>
-
-      <div className={styles.inviteSection}>
-        <p className={styles.inviteSectionTitle}>팀원 초대하기</p>
-        {renderInviteSections()}
       </div>
 
       <div className={styles.buttonSection}>
