@@ -44,6 +44,7 @@ interface Member {
   name: string;
   avatarKey: string;
   avatarVersion: number;
+  avatarUrl?: string; // API에서 직접 제공하는 avatarUrl
   roomRole: "LEADER" | string;
 }
 
@@ -52,6 +53,8 @@ interface ChatUser {
   id: number;
   name: string;
   avatar: string;
+  avatarKey?: string;
+  avatarVersion?: number;
   role?: string;
 }
 
@@ -95,7 +98,7 @@ interface ChatMessageType {
   readBy: number[];
 }
 
-// 기본 아바타 생성 함수
+// 기본 아바타 생성 함수 (fallback용)
 const generateAvatar = (name: string): string => {
   const avatars = ["🐱", "🐶", "🐰", "🐻", "🐼", "🐨", "🐯", "🦁", "🐸", "🐵"];
   const index = name.length % avatars.length;
@@ -114,6 +117,7 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
   const [hoveredMessage, setHoveredMessage] = useState<number | null>(null);
   const [showPayment, setShowPayment] = useState<boolean>(true);
   const [isSuccessCompleted, setIsSuccessCompleted] = useState<boolean>(false);
+  const [currentUserAvatarUrl, setCurrentUserAvatarUrl] = useState<string>("");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -130,6 +134,32 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
 
   const token = session?.accessToken || "";
   const roomId = roomData.id;
+
+  // 현재 사용자의 아바타 URL 조회
+  useEffect(() => {
+    const fetchCurrentUserAvatar = async () => {
+      if (!token) return;
+
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users/me/avatar/url`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setCurrentUserAvatarUrl(data.url || "");
+          console.log("현재 사용자 아바타 URL:", data.url);
+        }
+      } catch (error) {
+        console.error("아바타 URL 조회 실패:", error);
+      }
+    };
+
+    fetchCurrentUserAvatar();
+  }, [token]);
 
   // WebSocket 메시지를 화면 표시용 타입으로 변환
   const convertWSMessageToDisplay = useCallback((wsMsg: WSChatMessage): ChatMessageType => {
@@ -197,20 +227,28 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
   const actualMembers: Member[] = roomData.members || [];
   const memberCount: number = actualMembers.length || roomData.memberCount || 0;
 
+  // 현재 사용자의 멤버 정보 찾기
+  const currentMemberInfo = actualMembers.find((m) => m.memberId === currentUser.id);
+
   // 멤버 정보를 ChatMessage에서 사용할 수 있는 형태로 변환
   const chatUsers: ChatUser[] = [
     {
       id: currentUser.id,
       name: currentUser.name,
-      avatar: generateAvatar(currentUser.name),
-      role: actualMembers.find((m) => m.memberId === currentUser.id)?.roomRole || "MEMBER",
+      avatar: currentUserAvatarUrl || generateAvatar(currentUser.name),
+      avatarKey: currentMemberInfo?.avatarKey,
+      avatarVersion: currentMemberInfo?.avatarVersion,
+      role: currentMemberInfo?.roomRole || "MEMBER",
     },
     ...actualMembers
       .filter((member) => member.memberId !== currentUser.id)
       .map((member: Member) => ({
         id: member.memberId,
         name: member.name,
-        avatar: generateAvatar(member.name),
+        // API에서 제공하는 avatarUrl 직접 사용
+        avatar: member.avatarUrl || generateAvatar(member.name),
+        avatarKey: member.avatarKey,
+        avatarVersion: member.avatarVersion,
         role: member.roomRole,
       })),
   ];
@@ -284,7 +322,6 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
       },
     ];
 
-    // DEMO 타입이면 BASIC 정보 반환
     const roomType = roomData.type === "DEMO" ? "BASIC" : roomData.type || "BASIC";
     return roomTypes.find((type) => type.id === roomType) || roomTypes[0];
   };
@@ -294,14 +331,8 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
     setShowPayment(false);
   };
 
-  // 현재 사용자가 팀장인지 확인 - roomData에서 직접 가져오기
+  // 현재 사용자가 팀장인지 확인
   const isLeader = roomData.role === "LEADER";
-
-  // 디버깅용 로그
-  useEffect(() => {
-    console.log("Room Data Role:", roomData.role);
-    console.log("Is Leader:", isLeader);
-  }, [roomData.role, isLeader]);
 
   // 팀플 성공 처리
   const handleSuccess = async (): Promise<void> => {
@@ -314,7 +345,7 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
     if (!confirmSuccess) return;
 
     try {
-      const response = await fetch(`http://13.125.193.243:8080/rooms/${roomData.id}/success`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/rooms/${roomData.id}/success`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -324,7 +355,7 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
 
       if (response.ok) {
         alert("팀플이 성공적으로 완료되었습니다! 🎉");
-        setIsSuccessCompleted(true); // 성공 상태로 변경
+        setIsSuccessCompleted(true);
       } else {
         const errorText = await response.text();
         console.error("팀플 성공 처리 실패:", errorText);
@@ -342,7 +373,7 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
     if (!confirmExit) return;
 
     try {
-      const response = await fetch(`http://13.125.193.243:8080/rooms/${roomData.id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/rooms/${roomData.id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -351,8 +382,7 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
 
       if (response.ok) {
         alert("티밍룸에서 나갔습니다.");
-        // 메인 페이지로 이동하거나 방 목록 새로고침 등의 처리
-        window.location.href = "/mainpage"; // 또는 적절한 페이지로 리다이렉트
+        window.location.href = "/mainpage";
       } else {
         const errorText = await response.text();
         console.error("티밍룸 나가기 실패:", errorText);
@@ -434,7 +464,7 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
                   </div>
                 </div>
 
-                <form onSubmit={handleSendMessage} className={styles.chatInput}>
+                <div className={styles.chatInput}>
                   <button
                     type="button"
                     className={styles.iconButton}
@@ -456,14 +486,18 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
 
                   <div className={styles.inputIcons}>
                     <button
-                      type="submit"
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleSendMessage(e);
+                      }}
                       className={`${styles.iconButton} ${message.trim() ? styles.sendActive : ""}`}
                       disabled={!message.trim() || !isConnected}
                     >
                       <FiSend size={20} color={message.trim() ? "#3F3FD4" : "#666"} />
                     </button>
                   </div>
-                </form>
+                </div>
               </>
             )}
           </div>
@@ -478,39 +512,57 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
           <div className={styles.chatUserList}>
             <div className={styles.userListTitle}>참여자 ({memberCount})</div>
             {actualMembers.length > 0 ? (
-              actualMembers.map((member: Member) => (
-                <div key={member.memberId} className={styles.userItem}>
-                  <div className={styles.userAvatar}>
-                    {member.avatarKey ? (
-                      <Image
-                        src={`${process.env.NEXT_PUBLIC_BACKEND_URL}/files/${member.avatarKey}?v=${member.avatarVersion}`}
-                        alt={member.name}
-                        width={40}
-                        height={40}
-                        className={styles.avatarImage}
-                        onError={(e) => {
-                          const target = e.currentTarget;
-                          target.style.display = "none";
-                          const nextSibling = target.nextElementSibling as HTMLElement;
-                          if (nextSibling) {
-                            nextSibling.style.display = "block";
-                          }
-                        }}
-                      />
-                    ) : null}
-                    <span className={styles.emojiAvatar} style={{ display: member.avatarKey ? "none" : "block" }}>
-                      {generateAvatar(member.name)}
-                    </span>
-                  </div>
-                  <div className={styles.userInfo}>
-                    <div className={styles.userName}>
-                      {member.name}
-                      {member.roomRole === "LEADER" && <span className={styles.leaderBadge}>👑</span>}
-                      {member.name === currentUser.name && <span className={styles.currentUserBadge}>(나)</span>}
+              actualMembers.map((member: Member) => {
+                // 디버깅: 멤버 정보 확인
+                console.log("Member Info:", {
+                  id: member.memberId,
+                  name: member.name,
+                  avatarUrl: member.avatarUrl,
+                  avatarKey: member.avatarKey,
+                  avatarVersion: member.avatarVersion,
+                });
+
+                // 현재 사용자는 별도 API로 가져온 아바타, 다른 멤버는 API 응답의 avatarUrl 사용
+                const memberAvatarUrl = member.memberId === currentUser.id ? currentUserAvatarUrl : member.avatarUrl;
+
+                console.log(`Avatar URL for ${member.name}:`, memberAvatarUrl);
+
+                return (
+                  <div key={member.memberId} className={styles.userItem}>
+                    <div className={styles.userAvatar}>
+                      {memberAvatarUrl ? (
+                        <Image
+                          src={memberAvatarUrl}
+                          alt={member.name}
+                          width={40}
+                          height={40}
+                          className={styles.avatarImage}
+                          unoptimized
+                          onError={(e) => {
+                            console.error(`Image load failed for ${member.name}:`, memberAvatarUrl);
+                            const target = e.currentTarget;
+                            target.style.display = "none";
+                            const nextSibling = target.nextElementSibling as HTMLElement;
+                            if (nextSibling) {
+                              nextSibling.style.display = "block";
+                            }
+                          }}
+                        />
+                      ) : null}
+                      <span className={styles.emojiAvatar} style={{ display: memberAvatarUrl ? "none" : "block" }}>
+                        {generateAvatar(member.name)}
+                      </span>
+                    </div>
+                    <div className={styles.userInfo}>
+                      <div className={styles.userName}>
+                        {member.name}
+                        {member.roomRole === "LEADER" && <span className={styles.leaderBadge}>👑</span>}
+                        {member.memberId === currentUser.id && <span className={styles.currentUserBadge}>(나)</span>}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className={styles.loadingMembers}>멤버 정보를 불러오는 중...</div>
             )}
@@ -528,7 +580,6 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
             </div>
           </div>
 
-          {/* 팀플 성공 전: 팀장에게만 팀플 성공 버튼 표시 */}
           {!isSuccessCompleted && isLeader && (
             <div className={styles.successButton} onClick={handleSuccess}>
               <MdCelebration className={styles.successIcon} />
@@ -536,7 +587,6 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
             </div>
           )}
 
-          {/* 팀플 성공 후: 모든 멤버에게 티밍룸 나가기 버튼 표시 */}
           {isSuccessCompleted && (
             <div className={styles.exitButton} onClick={handleExit}>
               <ImExit className={styles.exitIcon} />

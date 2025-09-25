@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { FiClock, FiUser } from "react-icons/fi";
+import Image from "next/image";
 import styles from "./AssignmentList.module.css";
 
 // API 응답 타입
@@ -311,9 +312,17 @@ const AssignmentList: React.FC<AssignmentListProps> = ({
     }
   };
 
-  const getMemberAvatar = (memberId: string): string => {
+  // 아바타 데이터 가져오기 (URL인지 이모지인지 구분)
+  const getMemberAvatarData = (memberId: string): { type: "url" | "emoji"; value: string } => {
     const member = members.find((m) => m.id === memberId);
-    return member?.avatar || "👤";
+    const avatar = member?.avatar || "👤";
+
+    // URL인지 확인 (http로 시작하거나 /로 시작하는 경우)
+    if (avatar.startsWith("http") || avatar.startsWith("/")) {
+      return { type: "url", value: avatar };
+    }
+
+    return { type: "emoji", value: avatar };
   };
 
   const getCompletionRate = (assignment: Assignment): number => {
@@ -397,11 +406,33 @@ const AssignmentList: React.FC<AssignmentListProps> = ({
 
               <div className={styles.progressInfo}>
                 <div className={styles.memberAvatars}>
-                  {assignment.assignedMembers.slice(0, 3).map((memberId) => (
-                    <div key={memberId} className={styles.memberAvatar}>
-                      {getMemberAvatar(memberId)}
-                    </div>
-                  ))}
+                  {assignment.assignedMembers.slice(0, 3).map((memberId) => {
+                    const avatarData = getMemberAvatarData(memberId);
+                    return (
+                      <div key={memberId} className={styles.memberAvatar}>
+                        {avatarData.type === "url" ? (
+                          <Image
+                            src={avatarData.value}
+                            alt="avatar"
+                            width={32}
+                            height={32}
+                            className={styles.avatarImage}
+                            unoptimized
+                            onError={(e) => {
+                              const target = e.currentTarget;
+                              target.style.display = "none";
+                              const nextSibling = target.nextElementSibling as HTMLElement;
+                              if (nextSibling) {
+                                nextSibling.style.display = "block";
+                              }
+                            }}
+                          />
+                        ) : (
+                          <span>{avatarData.value}</span>
+                        )}
+                      </div>
+                    );
+                  })}
                   {assignment.assignedMembers.length > 3 && (
                     <div className={styles.memberAvatar}>+{assignment.assignedMembers.length - 3}</div>
                   )}

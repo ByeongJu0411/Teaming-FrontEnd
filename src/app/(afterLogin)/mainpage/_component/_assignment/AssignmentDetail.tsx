@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useSession } from "next-auth/react";
 import { FiCheckCircle, FiCircle } from "react-icons/fi";
+import Image from "next/image";
 import styles from "./AssignmentDetail.module.css";
 
 interface Assignment {
@@ -42,7 +43,7 @@ interface AssignmentDetailProps {
   onSubmitClick: () => void;
   onViewSubmission: (submission: Assignment["submissions"][0]) => void;
   canSubmit: (assignment: Assignment) => boolean;
-  roomId: number; // string에서 number로 변경
+  roomId: number;
   onAssignmentUpdate?: (updatedAssignment: Assignment) => void;
 }
 
@@ -94,9 +95,17 @@ const AssignmentDetail: React.FC<AssignmentDetailProps> = ({
     }
   };
 
-  const getMemberAvatar = (memberId: string) => {
+  // 아바타 데이터 가져오기 (URL인지 이모지인지 구분)
+  const getMemberAvatarData = (memberId: string): { type: "url" | "emoji"; value: string } => {
     const member = members.find((m) => m.id === memberId);
-    return member?.avatar || "👤";
+    const avatar = member?.avatar || "👤";
+
+    // URL인지 확인 (http로 시작하거나 /로 시작하는 경우)
+    if (avatar.startsWith("http") || avatar.startsWith("/")) {
+      return { type: "url", value: avatar };
+    }
+
+    return { type: "emoji", value: avatar };
   };
 
   // 과제 취소 API 호출
@@ -114,7 +123,6 @@ const AssignmentDetail: React.FC<AssignmentDetailProps> = ({
     try {
       console.log("과제 취소 요청:", { roomId, assignmentId: assignment.id });
 
-      // roomId는 이미 number이므로 바로 사용
       const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/assignments/${assignment.id}`, {
         method: "DELETE",
         headers: {
@@ -231,36 +239,61 @@ const AssignmentDetail: React.FC<AssignmentDetailProps> = ({
             )}
           </div>
           <div className={styles.submissionList}>
-            {assignment.submissions.map((submission) => (
-              <div
-                key={submission.memberId}
-                className={`${styles.submissionItem} ${submission.status === "제출완료" ? styles.clickable : ""}`}
-                onClick={() => onViewSubmission(submission)}
-              >
-                <div className={styles.submissionMember}>
-                  <div className={styles.memberAvatar}>{getMemberAvatar(submission.memberId)}</div>
-                  <span className={styles.memberName}>{submission.memberName}</span>
-                </div>
+            {assignment.submissions.map((submission) => {
+              const avatarData = getMemberAvatarData(submission.memberId);
 
-                <div className={styles.submissionStatus}>
-                  {submission.status === "제출완료" ? (
-                    <>
-                      <FiCheckCircle color="#10b981" size={16} />
-                      <div className={styles.submissionDetails}>
-                        <span className={styles.submittedText}>
-                          {submission.submittedAt && formatDateShort(submission.submittedAt)}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <FiCircle color="#666" size={16} />
-                      <span className={styles.waitingText}>대기중</span>
-                    </>
-                  )}
+              return (
+                <div
+                  key={submission.memberId}
+                  className={`${styles.submissionItem} ${submission.status === "제출완료" ? styles.clickable : ""}`}
+                  onClick={() => onViewSubmission(submission)}
+                >
+                  <div className={styles.submissionMember}>
+                    <div className={styles.memberAvatar}>
+                      {avatarData.type === "url" ? (
+                        <Image
+                          src={avatarData.value}
+                          alt={submission.memberName}
+                          width={32}
+                          height={32}
+                          className={styles.avatarImage}
+                          unoptimized
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            target.style.display = "none";
+                            const nextSibling = target.nextElementSibling as HTMLElement;
+                            if (nextSibling) {
+                              nextSibling.style.display = "block";
+                            }
+                          }}
+                        />
+                      ) : (
+                        <span>{avatarData.value}</span>
+                      )}
+                    </div>
+                    <span className={styles.memberName}>{submission.memberName}</span>
+                  </div>
+
+                  <div className={styles.submissionStatus}>
+                    {submission.status === "제출완료" ? (
+                      <>
+                        <FiCheckCircle color="#10b981" size={16} />
+                        <div className={styles.submissionDetails}>
+                          <span className={styles.submittedText}>
+                            {submission.submittedAt && formatDateShort(submission.submittedAt)}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <FiCircle color="#666" size={16} />
+                        <span className={styles.waitingText}>대기중</span>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

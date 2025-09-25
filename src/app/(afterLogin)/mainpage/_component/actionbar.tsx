@@ -13,6 +13,7 @@ interface Member {
   name: string;
   avatarKey: string;
   avatarVersion: number;
+  avatarUrl?: string;
   roomRole: "LEADER" | string;
 }
 
