@@ -210,7 +210,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 5rem;
+  width: 80%;
   margin-bottom: 4px;
 }
 
@@ -229,7 +229,18 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
+.unreadBadge {
+  min-width: 20px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ef4444;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 0 6px;
+  flex-shrink: 0; /* 추가: 배지가 줄어들지 않도록 */
+}
 /* 애니메이션 */
 @keyframes spin {
   0% {

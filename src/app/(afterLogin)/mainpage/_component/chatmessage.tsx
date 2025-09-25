@@ -43,7 +43,8 @@ export default function ChatMessage({
 
   // 안 읽은 사용자 수 계산 함수
   const getUnreadCount = (message: ChatMessage) => {
-    return getUnreadUsers(message).length;
+    // 전체 사용자에서 발신자 제외, readBy에 없는 사람만 카운트
+    return allUsers.filter((user) => user.id !== message.senderId && !message.readBy.includes(user.id)).length;
   };
 
   const unreadCount = getUnreadCount(message);
@@ -122,12 +123,13 @@ export default function ChatMessage({
               <div className={styles.messageInfo}>
                 <div className={styles.messageTime}>{formatTime(message.timestamp)}</div>
                 {/* 안 읽은 사람이 있을 때 표시 */}
-                {unreadCount > 0 && <div className={styles.unreadCount}>{unreadCount}</div>}
+                {/*{unreadCount > 0 && <div className={styles.unreadCount}>{unreadCount}</div>}*/}
               </div>
             )}
           </div>
 
           {/* 호버 시 안 읽은 사용자 목록 표시 */}
+          {/*     
           {hoveredMessage === message.id && unreadCount > 0 && (
             <div className={styles.unreadTooltip}>
               <div className={styles.tooltipHeader}>안 읽은 사람</div>
@@ -137,7 +139,7 @@ export default function ChatMessage({
                 </div>
               ))}
             </div>
-          )}
+          )}*/}
         </div>
       </div>
     </div>

@@ -62,6 +62,7 @@ interface ChatRoomProps {
     members?: Member[];
     memberCount?: number;
   };
+  onRoomUpdate?: (roomId: string, unreadCount: number) => void;
 }
 
 // WebSocket에서 받은 메시지 타입
@@ -98,7 +99,7 @@ const generateAvatar = (name: string): string => {
   return avatars[index];
 };
 
-export default function ChatRoom({ roomData }: ChatRoomProps) {
+export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
   const { data: session } = useSession();
 
   const [fileModalStatus, setFileModalStatus] = useState<boolean>(false);
@@ -148,25 +149,38 @@ export default function ChatRoom({ roomData }: ChatRoomProps) {
   } = useChatMessages({
     roomId,
     token,
+    currentUserId: currentUser.id,
   });
 
   // WebSocket 훅
+  // onReadBoundaryUpdate 핸들러 추가
   const { isConnected, sendMessage: wsSendMessage } = useWebSocket({
     roomId,
     token,
     onMessageReceived: (wsMessage) => {
-      console.log("WebSocket 메시지 수신:", wsMessage);
       addApiMessage(wsMessage);
-      markAsRead(wsMessage.messageId);
+
+      // 상대방 메시지는 자동 읽음 처리
+      if (wsMessage.sender.id !== currentUser.id) {
+        markAsRead(wsMessage.messageId);
+      }
     },
     onReadBoundaryUpdate: (update) => {
-      console.log("읽음 경계 업데이트:", update);
-    },
-    onRoomEvent: (event) => {
-      console.log("방 이벤트:", event);
-    },
-    onError: (error) => {
-      console.error("WebSocket 에러:", error);
+      // 읽음 상태 실시간 업데이트
+      setDisplayMessages((prev) =>
+        prev.map((msg) => {
+          if (update.lastReadMessageId && msg.id <= update.lastReadMessageId) {
+            if (!msg.readBy.includes(update.userId)) {
+              return { ...msg, readBy: [...msg.readBy, update.userId] };
+            }
+          }
+          return msg;
+        })
+      );
+      // 읽음 처리되면 읽지 않은 개수 0으로 업데이트
+      if (update.userId === currentUser.id && onRoomUpdate) {
+        onRoomUpdate(roomId, 0);
+      }
     },
   });
 

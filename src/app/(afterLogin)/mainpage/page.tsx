@@ -10,13 +10,31 @@ import FindRoom from "./_component/findroom";
 import MyPage from "./_component/mypage";
 import ChatRoom from "./_component/chatroom";
 import Welcome from "./_component/welcome";
+// ✅ Room 타입 정의 추가
+interface Member {
+  memberId: number;
+  lastReadMessageId: number;
+  name: string;
+  avatarKey: string;
+  avatarVersion: number;
+  roomRole: "LEADER" | string;
+}
 
+interface Room {
+  id: string;
+  name: string;
+  lastChat: string;
+  unreadCount?: number;
+  memberCount?: number;
+  members?: Member[];
+}
 export default function MainPage(): JSX.Element {
   const [selectedMenu, setSelectedMenu] = useState<string | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<{ id: string; name: string; lastChat: string } | null>(null);
   const [backendAuthAttempted, setBackendAuthAttempted] = useState<boolean>(false);
-  const [canProceedWithoutBackend, setCanProceedWithoutBackend] = useState<boolean>(false);
+  const [, setCanProceedWithoutBackend] = useState<boolean>(false);
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
+  const [, setRooms] = useState<Room[]>([]);
   const { data: session, status } = useSession();
   const router = useRouter();
   const hasRedirected = useRef(false);
@@ -69,6 +87,10 @@ export default function MainPage(): JSX.Element {
     }
   }, [status, session, router]);
 
+  const handleRoomUpdate = (roomId: string, unreadCount: number) => {
+    setRooms((prevRooms) => prevRooms.map((room) => (room.id === roomId ? { ...room, unreadCount } : room)));
+  };
+
   const handleMenuSelect = (menu: string): void => {
     if (menu === "" || menu === null) {
       setSelectedMenu(null);
@@ -91,7 +113,7 @@ export default function MainPage(): JSX.Element {
 
   const renderContent = (): JSX.Element | null => {
     if (selectedRoom) {
-      return <ChatRoom roomData={selectedRoom} />;
+      return <ChatRoom roomData={selectedRoom} onRoomUpdate={handleRoomUpdate} />;
     }
 
     switch (selectedMenu) {
