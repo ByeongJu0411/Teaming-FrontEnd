@@ -115,7 +115,7 @@ const AssignmentDetail: React.FC<AssignmentDetailProps> = ({
       console.log("과제 취소 요청:", { roomId, assignmentId: assignment.id });
 
       // roomId는 이미 number이므로 바로 사용
-      const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/assignment/${assignment.id}`, {
+      const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/assignments/${assignment.id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${session.accessToken}`,

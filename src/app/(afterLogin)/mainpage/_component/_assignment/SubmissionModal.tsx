@@ -118,7 +118,7 @@ const SubmissionModal: React.FC<SubmissionModalProps> = ({
       console.log("- submissionData:", submissionData);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080"}/rooms/${roomId}/assignment/submit`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080"}/rooms/${roomId}/assignments/submit`,
         {
           method: "POST",
           headers: {
