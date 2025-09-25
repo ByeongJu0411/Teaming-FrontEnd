@@ -3,6 +3,7 @@
 import styles from "./chatroom.module.css";
 import { FiPlus, FiSend } from "react-icons/fi";
 import React, { useRef, useState, useEffect, useCallback } from "react";
+import { MdCelebration } from "react-icons/md";
 import { FcDocument, FcAddImage } from "react-icons/fc";
 import { ImExit } from "react-icons/im";
 import { useSession } from "next-auth/react";
@@ -62,6 +63,7 @@ interface ChatRoomProps {
     members?: Member[];
     memberCount?: number;
     type?: "BASIC" | "STANDARD" | "ELITE" | "DEMO";
+    role?: "LEADER" | "MEMBER";
   };
   onRoomUpdate?: (roomId: string, unreadCount: number) => void;
 }
@@ -111,6 +113,7 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
   const [displayMessages, setDisplayMessages] = useState<ChatMessageType[]>([]);
   const [hoveredMessage, setHoveredMessage] = useState<number | null>(null);
   const [showPayment, setShowPayment] = useState<boolean>(true);
+  const [isSuccessCompleted, setIsSuccessCompleted] = useState<boolean>(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -291,6 +294,76 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
     setShowPayment(false);
   };
 
+  // 현재 사용자가 팀장인지 확인 - roomData에서 직접 가져오기
+  const isLeader = roomData.role === "LEADER";
+
+  // 디버깅용 로그
+  useEffect(() => {
+    console.log("Room Data Role:", roomData.role);
+    console.log("Is Leader:", isLeader);
+  }, [roomData.role, isLeader]);
+
+  // 팀플 성공 처리
+  const handleSuccess = async (): Promise<void> => {
+    if (!isLeader) {
+      alert("팀장만 팀플 성공을 선언할 수 있습니다.");
+      return;
+    }
+
+    const confirmSuccess = window.confirm("팀플을 성공으로 마무리하시겠습니까?");
+    if (!confirmSuccess) return;
+
+    try {
+      const response = await fetch(`http://13.125.193.243:8080/rooms/${roomData.id}/success`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        alert("팀플이 성공적으로 완료되었습니다! 🎉");
+        setIsSuccessCompleted(true); // 성공 상태로 변경
+      } else {
+        const errorText = await response.text();
+        console.error("팀플 성공 처리 실패:", errorText);
+        alert("팀플 성공 처리 중 오류가 발생했습니다.");
+      }
+    } catch (error) {
+      console.error("팀플 성공 API 호출 오류:", error);
+      alert("네트워크 오류가 발생했습니다.");
+    }
+  };
+
+  // 티밍룸 나가기 처리
+  const handleExit = async (): Promise<void> => {
+    const confirmExit = window.confirm("티밍룸에서 나가시겠습니까?");
+    if (!confirmExit) return;
+
+    try {
+      const response = await fetch(`http://13.125.193.243:8080/rooms/${roomData.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        alert("티밍룸에서 나갔습니다.");
+        // 메인 페이지로 이동하거나 방 목록 새로고침 등의 처리
+        window.location.href = "/mainpage"; // 또는 적절한 페이지로 리다이렉트
+      } else {
+        const errorText = await response.text();
+        console.error("티밍룸 나가기 실패:", errorText);
+        alert("티밍룸 나가기 중 오류가 발생했습니다.");
+      }
+    } catch (error) {
+      console.error("티밍룸 나가기 API 호출 오류:", error);
+      alert("네트워크 오류가 발생했습니다.");
+    }
+  };
+
   // 메시지 변경 시 스크롤
   useEffect(() => {
     scrollToBottom();
@@ -455,10 +528,21 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
             </div>
           </div>
 
-          <div className={styles.exitButton}>
-            <ImExit className={styles.exitIcon} />
-            티밍룸 나가기
-          </div>
+          {/* 팀플 성공 전: 팀장에게만 팀플 성공 버튼 표시 */}
+          {!isSuccessCompleted && isLeader && (
+            <div className={styles.successButton} onClick={handleSuccess}>
+              <MdCelebration className={styles.successIcon} />
+              팀플 성공
+            </div>
+          )}
+
+          {/* 팀플 성공 후: 모든 멤버에게 티밍룸 나가기 버튼 표시 */}
+          {isSuccessCompleted && (
+            <div className={styles.exitButton} onClick={handleExit}>
+              <ImExit className={styles.exitIcon} />
+              티밍룸 나가기
+            </div>
+          )}
         </div>
       </div>
 

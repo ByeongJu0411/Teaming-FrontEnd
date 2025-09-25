@@ -378,6 +378,34 @@
   height: 24px;
 }
 
+/* ===== 팀플성공 버튼 ===== */
+.successButton {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #121216;
+  border: 1px solid #292929;
+  border-radius: 12px;
+  gap: 12px;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  color: #54aeff;
+  flex-shrink: 0; /* 크기 고정 */
+}
+
+.successButton:hover {
+  background-color: rgba(84, 174, 255, 0.1);
+}
+
+.successIcon {
+  width: 24px;
+  height: 24px;
+  color: #54aeff;
+}
+
 /* ===== 나가기 버튼 ===== */
 .exitButton {
   width: 100%;
