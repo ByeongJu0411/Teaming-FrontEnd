@@ -44,11 +44,10 @@ interface Member {
   name: string;
   avatarKey: string;
   avatarVersion: number;
-  avatarUrl?: string; // API에서 직접 제공하는 avatarUrl
   roomRole: "LEADER" | string;
 }
 
-// ChatUser 타입 정의 (ChatMessage에서 사용하는 형태)
+// ChatUser 타입 정의
 interface ChatUser {
   id: number;
   name: string;
@@ -71,7 +70,7 @@ interface ChatRoomProps {
   onRoomUpdate?: (roomId: string, unreadCount: number) => void;
 }
 
-// WebSocket에서 받은 메시지 타입
+// WebSocket 메시지 타입
 interface WSChatMessage {
   messageId: number;
   roomId: number;
@@ -87,7 +86,7 @@ interface WSChatMessage {
   attachments: MessageAttachment[];
 }
 
-// ChatMessage 컴포넌트용 타입 (기존 구조 유지)
+// ChatMessage 컴포넌트용 타입
 interface ChatMessageType {
   id: number;
   content: string;
@@ -117,12 +116,12 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
   const [hoveredMessage, setHoveredMessage] = useState<number | null>(null);
   const [showPayment, setShowPayment] = useState<boolean>(true);
   const [isSuccessCompleted, setIsSuccessCompleted] = useState<boolean>(false);
-  const [currentUserAvatarUrl, setCurrentUserAvatarUrl] = useState<string>("");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const file = useRef<HTMLInputElement | null>(null);
+  const imageFileRef = useRef<HTMLInputElement | null>(null);
+  const documentFileRef = useRef<HTMLInputElement | null>(null);
 
   // 현재 로그인한 사용자 정보
   const currentUser = {
@@ -134,32 +133,6 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
 
   const token = session?.accessToken || "";
   const roomId = roomData.id;
-
-  // 현재 사용자의 아바타 URL 조회
-  useEffect(() => {
-    const fetchCurrentUserAvatar = async () => {
-      if (!token) return;
-
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users/me/avatar/url`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setCurrentUserAvatarUrl(data.url || "");
-          console.log("현재 사용자 아바타 URL:", data.url);
-        }
-      } catch (error) {
-        console.error("아바타 URL 조회 실패:", error);
-      }
-    };
-
-    fetchCurrentUserAvatar();
-  }, [token]);
 
   // WebSocket 메시지를 화면 표시용 타입으로 변환
   const convertWSMessageToDisplay = useCallback((wsMsg: WSChatMessage): ChatMessageType => {
@@ -193,13 +166,11 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
     onMessageReceived: (wsMessage) => {
       addApiMessage(wsMessage);
 
-      // 상대방 메시지는 자동 읽음 처리
       if (wsMessage.sender.id !== currentUser.id) {
         markAsRead(wsMessage.messageId);
       }
     },
     onReadBoundaryUpdate: (update) => {
-      // 읽음 상태 실시간 업데이트
       setDisplayMessages((prev) =>
         prev.map((msg) => {
           if (update.lastReadMessageId && msg.id <= update.lastReadMessageId) {
@@ -210,7 +181,6 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
           return msg;
         })
       );
-      // 읽음 처리되면 읽지 않은 개수 0으로 업데이트
       if (update.userId === currentUser.id && onRoomUpdate) {
         onRoomUpdate(roomId, 0);
       }
@@ -223,35 +193,25 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
     setDisplayMessages(converted);
   }, [apiMessages, convertWSMessageToDisplay]);
 
-  // 실제 멤버 데이터 처리
+  // 멤버 데이터 처리
   const actualMembers: Member[] = roomData.members || [];
   const memberCount: number = actualMembers.length || roomData.memberCount || 0;
 
-  // 현재 사용자의 멤버 정보 찾기
-  const currentMemberInfo = actualMembers.find((m) => m.memberId === currentUser.id);
-
   // 멤버 정보를 ChatMessage에서 사용할 수 있는 형태로 변환
-  const chatUsers: ChatUser[] = [
-    {
-      id: currentUser.id,
-      name: currentUser.name,
-      avatar: currentUserAvatarUrl || generateAvatar(currentUser.name),
-      avatarKey: currentMemberInfo?.avatarKey,
-      avatarVersion: currentMemberInfo?.avatarVersion,
-      role: currentMemberInfo?.roomRole || "MEMBER",
-    },
-    ...actualMembers
-      .filter((member) => member.memberId !== currentUser.id)
-      .map((member: Member) => ({
-        id: member.memberId,
-        name: member.name,
-        // API에서 제공하는 avatarUrl 직접 사용
-        avatar: member.avatarUrl || generateAvatar(member.name),
-        avatarKey: member.avatarKey,
-        avatarVersion: member.avatarVersion,
-        role: member.roomRole,
-      })),
-  ];
+  const chatUsers: ChatUser[] = actualMembers.map((member: Member) => {
+    const avatarUrl = member.avatarKey
+      ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/files/${member.avatarKey}?v=${member.avatarVersion}`
+      : "";
+
+    return {
+      id: member.memberId,
+      name: member.name,
+      avatar: avatarUrl || generateAvatar(member.name),
+      avatarKey: member.avatarKey,
+      avatarVersion: member.avatarVersion,
+      role: member.roomRole,
+    };
+  });
 
   // 자동 스크롤
   const scrollToBottom = useCallback((): void => {
@@ -286,13 +246,149 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
     }
   };
 
-  // 파일 선택
-  const openFileSelector = (): void => {
-    file.current?.click();
+  // 파일 선택 (이미지/문서 구분)
+  const openImageSelector = (): void => {
+    imageFileRef.current?.click();
     setFileModalStatus(false);
   };
 
-  // 방 타입에 맞는 정보 가져오기
+  const openDocumentSelector = (): void => {
+    documentFileRef.current?.click();
+    setFileModalStatus(false);
+  };
+
+  // 파일 업로드 Intent API 호출
+  const handleFileUpload = async (file: File, fileType: "IMAGE" | "DOCUMENT"): Promise<void> => {
+    try {
+      if (!token) {
+        alert("인증 토큰이 없습니다.");
+        return;
+      }
+
+      console.log("=== 파일 업로드 Intent 시작 ===");
+      console.log("파일 정보:", {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        uploadType: fileType,
+      });
+
+      // 1. Intent API 요청
+      const requestBody = {
+        fileName: file.name,
+        contentType: file.type,
+        size: file.size,
+      };
+
+      const intentResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/files/intent/${roomId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log("Intent API 응답 상태:", intentResponse.status);
+
+      if (!intentResponse.ok) {
+        const errorText = await intentResponse.text();
+        console.error("Intent API 실패:", errorText);
+        alert(`파일 업로드 준비 실패: ${errorText}`);
+        return;
+      }
+
+      const intentData = await intentResponse.json();
+      console.log("Intent 성공:", intentData);
+
+      // 2. S3에 파일 업로드
+      console.log("=== S3 업로드 시작 ===");
+      const s3UploadResponse = await fetch(intentData.url, {
+        method: "PUT",
+        headers: {
+          "Content-Type": file.type,
+        },
+        body: file,
+      });
+
+      console.log("S3 업로드 응답 상태:", s3UploadResponse.status);
+
+      if (!s3UploadResponse.ok) {
+        const errorText = await s3UploadResponse.text();
+        console.error("S3 업로드 실패:", errorText);
+        alert("파일 업로드에 실패했습니다.");
+        return;
+      }
+
+      console.log("S3 업로드 성공!");
+
+      // 3. Complete API 호출
+      console.log("=== 파일 업로드 확정 시작 ===");
+      const completeResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/files/complete/${roomId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          key: intentData.key,
+        }),
+      });
+
+      console.log("Complete API 응답 상태:", completeResponse.status);
+
+      if (!completeResponse.ok) {
+        const errorText = await completeResponse.text();
+        console.error("Complete API 실패:", errorText);
+        alert("파일 업로드 확정에 실패했습니다.");
+        return;
+      }
+
+      const completeData = await completeResponse.json();
+      console.log("파일 업로드 완료:", completeData);
+
+      // 4. 파일 타입에 따라 WebSocket 메시지 타입 결정
+      const messageType = fileType === "IMAGE" ? "IMAGE" : "FILE";
+
+      // 5. WebSocket으로 파일 메시지 전송 (fileId 배열로 전달)
+      const fileMessageSuccess = wsSendMessage(
+        file.name, // 파일명을 content로 전송
+        messageType,
+        [completeData.fileId] // fileId를 배열로 전달
+      );
+
+      if (fileMessageSuccess) {
+        alert(`파일 "${file.name}"이 성공적으로 업로드되었습니다!`);
+        setTimeout(() => scrollToBottom(), 100);
+      } else {
+        console.error("파일 메시지 전송 실패");
+        alert("파일 업로드는 완료되었으나 메시지 전송에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("파일 업로드 오류:", error);
+      alert("파일 업로드 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 이미지 파일 선택 핸들러
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const file = e.target.files?.[0];
+    if (file) {
+      console.log("이미지 파일 선택:", file.name);
+      handleFileUpload(file, "IMAGE");
+    }
+  };
+
+  // 문서 파일 선택 핸들러
+  const handleDocumentFileChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const file = e.target.files?.[0];
+    if (file) {
+      console.log("문서 파일 선택:", file.name);
+      handleFileUpload(file, "DOCUMENT");
+    }
+  };
+
+  // 방 타입 정보
   const getRoomTypeInfo = () => {
     const roomTypes = [
       {
@@ -326,12 +422,12 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
     return roomTypes.find((type) => type.id === roomType) || roomTypes[0];
   };
 
-  // Payment 처리 완료 핸들러
+  // Payment 완료 핸들러
   const handlePaymentComplete = (): void => {
     setShowPayment(false);
   };
 
-  // 현재 사용자가 팀장인지 확인
+  // 팀장 여부
   const isLeader = roomData.role === "LEADER";
 
   // 팀플 성공 처리
@@ -367,7 +463,7 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
     }
   };
 
-  // 티밍룸 나가기 처리
+  // 티밍룸 나가기
   const handleExit = async (): Promise<void> => {
     const confirmExit = window.confirm("티밍룸에서 나가시겠습니까?");
     if (!confirmExit) return;
@@ -399,7 +495,7 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
     scrollToBottom();
   }, [displayMessages.length, scrollToBottom]);
 
-  // 세션이 없으면 로그인 필요 메시지 표시
+  // 세션 체크
   if (!session) {
     return (
       <div className={styles.container}>
@@ -464,7 +560,7 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
                   </div>
                 </div>
 
-                <div className={styles.chatInput}>
+                <form onSubmit={handleSendMessage} className={styles.chatInput}>
                   <button
                     type="button"
                     className={styles.iconButton}
@@ -486,18 +582,14 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
 
                   <div className={styles.inputIcons}>
                     <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleSendMessage(e);
-                      }}
+                      type="submit"
                       className={`${styles.iconButton} ${message.trim() ? styles.sendActive : ""}`}
                       disabled={!message.trim() || !isConnected}
                     >
                       <FiSend size={20} color={message.trim() ? "#3F3FD4" : "#666"} />
                     </button>
                   </div>
-                </div>
+                </form>
               </>
             )}
           </div>
@@ -513,33 +605,22 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
             <div className={styles.userListTitle}>참여자 ({memberCount})</div>
             {actualMembers.length > 0 ? (
               actualMembers.map((member: Member) => {
-                // 디버깅: 멤버 정보 확인
-                console.log("Member Info:", {
-                  id: member.memberId,
-                  name: member.name,
-                  avatarUrl: member.avatarUrl,
-                  avatarKey: member.avatarKey,
-                  avatarVersion: member.avatarVersion,
-                });
-
-                // 현재 사용자는 별도 API로 가져온 아바타, 다른 멤버는 API 응답의 avatarUrl 사용
-                const memberAvatarUrl = member.memberId === currentUser.id ? currentUserAvatarUrl : member.avatarUrl;
-
-                console.log(`Avatar URL for ${member.name}:`, memberAvatarUrl);
+                const avatarUrl = member.avatarKey
+                  ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/files/${member.avatarKey}?v=${member.avatarVersion}`
+                  : "";
 
                 return (
                   <div key={member.memberId} className={styles.userItem}>
                     <div className={styles.userAvatar}>
-                      {memberAvatarUrl ? (
+                      {avatarUrl ? (
                         <Image
-                          src={memberAvatarUrl}
+                          src={avatarUrl}
                           alt={member.name}
                           width={40}
                           height={40}
                           className={styles.avatarImage}
                           unoptimized
                           onError={(e) => {
-                            console.error(`Image load failed for ${member.name}:`, memberAvatarUrl);
                             const target = e.currentTarget;
                             target.style.display = "none";
                             const nextSibling = target.nextElementSibling as HTMLElement;
@@ -549,7 +630,7 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
                           }}
                         />
                       ) : null}
-                      <span className={styles.emojiAvatar} style={{ display: memberAvatarUrl ? "none" : "block" }}>
+                      <span className={styles.emojiAvatar} style={{ display: avatarUrl ? "none" : "block" }}>
                         {generateAvatar(member.name)}
                       </span>
                     </div>
@@ -596,13 +677,22 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
         </div>
       </div>
 
+      {/* 이미지 파일 input (이미지만 선택 가능) */}
       <input
         type="file"
-        ref={file}
+        ref={imageFileRef}
+        accept="image/*"
         style={{ display: "none" }}
-        onChange={(e) => {
-          console.log("파일 선택:", e.target.files?.[0]);
-        }}
+        onChange={handleImageFileChange}
+      />
+
+      {/* 문서 파일 input (문서만 선택 가능) */}
+      <input
+        type="file"
+        ref={documentFileRef}
+        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.hwp"
+        style={{ display: "none" }}
+        onChange={handleDocumentFileChange}
       />
 
       {fileModalStatus && (
@@ -610,11 +700,11 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
           <div className={styles.fileModal} onClick={(e) => e.stopPropagation()}>
             <h3>파일 첨부</h3>
             <div className={styles.fileOptions}>
-              <button onClick={openFileSelector} className={styles.fileOption}>
+              <button onClick={openDocumentSelector} className={styles.fileOption}>
                 <FcDocument size={24} />
                 <span>문서</span>
               </button>
-              <button onClick={openFileSelector} className={styles.fileOption}>
+              <button onClick={openImageSelector} className={styles.fileOption}>
                 <FcAddImage size={24} />
                 <span>이미지</span>
               </button>
@@ -631,7 +721,7 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
           members={actualMembers}
           roomId={roomData.id}
           onAssignmentCreated={() => {
-            console.log("과제 생성 완료, AssignmentRoom 새로고침 필요");
+            console.log("과제 생성 완료");
           }}
         />
       )}

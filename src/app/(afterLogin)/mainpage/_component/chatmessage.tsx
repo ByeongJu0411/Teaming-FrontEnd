@@ -1,5 +1,7 @@
 import React from "react";
 import Image from "next/image";
+import { FcDocument } from "react-icons/fc";
+import { FiImage } from "react-icons/fi";
 import styles from "./chatmessage.module.css";
 
 interface ChatMessage {
@@ -10,6 +12,14 @@ interface ChatMessage {
   timestamp: string;
   messageType: "TEXT" | "IMAGE" | "FILE" | "VIDEO" | "AUDIO" | "SYSTEM" | "SYSTEM_NOTICE";
   readBy: number[];
+  attachments?: Array<{
+    fileId: number;
+    name: string;
+    type: string;
+    previewUrl: string | null;
+    thumbnailUrl: string | null;
+    downloadUrl: string | null;
+  }>;
 }
 
 interface ChatMessageProps {
@@ -43,7 +53,6 @@ export default function ChatMessage({
 
   // 안 읽은 사용자 수 계산 함수
   const getUnreadCount = (message: ChatMessage) => {
-    // 전체 사용자에서 발신자 제외, readBy에 없는 사람만 카운트
     return allUsers.filter((user) => user.id !== message.senderId && !message.readBy.includes(user.id)).length;
   };
 
@@ -90,30 +99,30 @@ export default function ChatMessage({
               {message.messageType === "TEXT" && <span className={styles.messageText}>{message.content}</span>}
 
               {message.messageType === "IMAGE" && (
-                <Image
-                  src={message.content}
-                  alt="첨부 이미지"
-                  width={200}
-                  height={200}
-                  className={styles.messageImage}
-                />
+                <div className={styles.fileMessageWrapper}>
+                  <FiImage size={24} />
+                  <span className={styles.fileName}>{message.content}</span>
+                </div>
               )}
 
               {message.messageType === "FILE" && (
-                <div className={styles.messageFile}>
-                  <span>📎 {message.content}</span>
+                <div className={styles.fileMessageWrapper}>
+                  <FcDocument size={24} />
+                  <span className={styles.fileName}>{message.content}</span>
                 </div>
               )}
 
               {message.messageType === "VIDEO" && (
-                <div className={styles.messageFile}>
-                  <span>🎥 {message.content}</span>
+                <div className={styles.fileMessageWrapper}>
+                  <span>🎥</span>
+                  <span className={styles.fileName}>{message.content}</span>
                 </div>
               )}
 
               {message.messageType === "AUDIO" && (
-                <div className={styles.messageFile}>
-                  <span>🎵 {message.content}</span>
+                <div className={styles.fileMessageWrapper}>
+                  <span>🎵</span>
+                  <span className={styles.fileName}>{message.content}</span>
                 </div>
               )}
             </div>
