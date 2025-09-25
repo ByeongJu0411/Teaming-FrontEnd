@@ -54,7 +54,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  position: relative; /* 툴팁 위치를 위한 설정 */
+  position: relative;
 }
 
 .messageContent.myMessage {
@@ -98,7 +98,7 @@
   word-wrap: break-word;
   word-break: break-word;
   position: relative;
-  cursor: pointer; /* 호버 가능함을 표시 */
+  cursor: pointer;
 }
 
 .myBubble {
@@ -121,16 +121,62 @@
   font-weight: 400;
 }
 
-/* 이미지 메시지 */
+/* ===== 파일 메시지 스타일 ===== */
+.fileMessageWrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px;
+}
+
+.fileName {
+  font-size: 14px;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.myBubble .fileName {
+  color: white;
+}
+
+.otherBubble .fileName {
+  color: white;
+}
+
+/* ===== 이미지 메시지 스타일 ===== */
+.imageMessageWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 300px;
+}
+
 .messageImage {
-  max-width: 200px;
-  max-height: 200px;
+  max-width: 300px;
+  max-height: 300px;
   border-radius: 8px;
   object-fit: cover;
   display: block;
 }
 
-/* 파일 메시지 */
+.imagePlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.imagePlaceholder span {
+  font-size: 12px;
+  text-align: center;
+}
+
+/* 기존 파일 메시지 스타일 (호환성 유지) */
 .messageFile {
   display: flex;
   align-items: center;
@@ -143,7 +189,7 @@
 }
 
 .otherBubble .messageFile {
-  color: #333;
+  color: white;
 }
 
 /* ===== 메시지 정보 (시간 + 읽음 상태) ===== */
@@ -195,12 +241,10 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* 내 메시지일 때 툴팁을 오른쪽에 배치 */
 .messageContent.myMessage .unreadTooltip {
   right: 0;
 }
 
-/* 상대방 메시지일 때 툴팁을 왼쪽에 배치 */
 .messageContent.otherMessage .unreadTooltip {
   right: 0;
 }
@@ -216,12 +260,10 @@
   border-top: 5px solid rgba(0, 0, 0, 0.9);
 }
 
-/* 내 메시지 툴팁 화살표 위치 */
 .messageContent.myMessage .unreadTooltip::after {
   right: 20px;
 }
 
-/* 상대방 메시지 툴팁 화살표 위치 */
 .messageContent.otherMessage .unreadTooltip::after {
   left: 20px;
 }
@@ -352,7 +394,6 @@
 
 /* ===== 반응형 디자인 ===== */
 @media (max-width: 768px) {
-  /* 모바일에서 툴팁 위치 조정 */
   .unreadTooltip {
     right: 10px;
     left: auto;
@@ -362,5 +403,21 @@
   .unreadTooltip::after {
     right: 20px;
     left: auto;
+  }
+
+  .messageWrapper {
+    max-width: 90%;
+  }
+
+  .messageBubble {
+    max-width: 280px;
+  }
+
+  .imageMessageWrapper {
+    max-width: 250px;
+  }
+
+  .messageImage {
+    max-width: 250px;
   }
 }
