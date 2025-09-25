@@ -107,7 +107,7 @@ export default function ChatRoom({ roomData }: ChatRoomProps) {
   const [assignmentModalStatus, setAssignmentModalStatus] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("");
   const [messages, setMessages] = useState<ChatMessageType[]>(testMessages);
-  const [isConnected, setIsConnected] = useState<boolean>(true);
+  const [isConnected] = useState<boolean>(true);
   const [hoveredMessage, setHoveredMessage] = useState<number | null>(null);
 
   // Payment 컴포넌트 표시 상태
@@ -421,7 +421,7 @@ export default function ChatRoom({ roomData }: ChatRoomProps) {
       {assignmentModalStatus && (
         <AssignmentRoom
           setModal={() => setAssignmentModalStatus(!assignmentModalStatus)}
-          roomId={roomData.id}
+          roomId={Number(roomData.id)}
           members={actualMembers} // actualMembers가 빈 배열이라도 전달되어야 함
         />
       )}
