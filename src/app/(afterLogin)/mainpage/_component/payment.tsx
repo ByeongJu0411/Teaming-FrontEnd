@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
+import { useSession } from "next-auth/react";
 import styles from "./payment.module.css";
 
 interface RoomType {
@@ -24,6 +25,7 @@ const PaymentModal = ({ setModal, roomType, memberCount, onPaymentComplete }: Mo
   const [step, setStep] = useState(1);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
+  const { data: session } = useSession();
 
   const preventOffModal = (event: React.MouseEvent) => {
     event.stopPropagation();
@@ -41,45 +43,68 @@ const PaymentModal = ({ setModal, roomType, memberCount, onPaymentComplete }: Mo
     setIsPaymentLoading(true);
 
     try {
-      // API 요청 데이터 준비
-      const paymentData = {
-        userId: "current_user_id", // 실제 사용자 ID로 변경 필요
-        additionalProp1: roomType.id, // 방 타입 ID
-        additionalProp2: roomType.name, // 방 이름
-        additionalProp3: memberCount.toString(), // 멤버 수
-      };
+      // 가격 계산: 방 타입 가격 x (방 인원수 - 1)
+      const pricePerPerson = parseInt(roomType.price.replace(/[^0-9]/g, ""));
+      const amount = pricePerPerson * (memberCount - 1);
 
-      const response = await fetch("http://13.125.193.243:8080/payment/request", {
-        method: "POST",
+      console.log("결제 금액:", amount, "원 (", pricePerPerson, "x", memberCount - 1, ")");
+
+      const token = session?.accessToken;
+
+      if (!token) {
+        alert("로그인이 필요합니다.");
+        setIsPaymentLoading(false);
+        return;
+      }
+
+      const response = await fetch(`http://13.125.193.243:8080/payment/html?amount=${amount}`, {
+        method: "GET",
         headers: {
-          "Content-Type": "application/json",
-          Accept: "*/*",
+          Accept: "text/html",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(paymentData),
       });
 
-      if (response.ok) {
-        const result = await response.text(); // 응답이 string 타입이므로
-        console.log("결제 성공:", result);
+      if (response.status === 200) {
+        const htmlContent = await response.text();
+        console.log("결제 페이지 로드 성공");
 
-        // 결제 성공 처리
+        // 결제 HTML을 새 창으로 표시
+        const paymentWindow = window.open("", "_blank", "width=600,height=800");
+        if (paymentWindow) {
+          paymentWindow.document.write(htmlContent);
+          paymentWindow.document.close();
+        }
+
+        // 결제 성공 메시지
+        alert("결제가 성공적으로 완료되었습니다!");
+
+        // 결제 완료 처리 - 채팅방으로 돌아가기
         onPaymentComplete();
         setModal();
+      } else if (response.status === 500) {
+        console.error("결제 실패: 서버 오류");
+
+        // 결제 실패 메시지
+        alert("결제가 실패되었습니다. 다시 시도해주세요.");
+
+        // Payment 모달을 닫지 않고 유지 (다시 시도 가능)
+        setIsPaymentLoading(false);
       } else {
-        console.error("결제 실패:", response.status, response.statusText);
-        // 에러 처리 - 사용자에게 알림
+        console.error("결제 페이지 로드 실패:", response.status, response.statusText);
         alert("결제 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
+        setIsPaymentLoading(false);
       }
     } catch (error) {
       console.error("결제 API 호출 오류:", error);
       alert("결제 처리 중 네트워크 오류가 발생했습니다. 다시 시도해주세요.");
-    } finally {
       setIsPaymentLoading(false);
     }
   };
 
   const priceNumber = parseInt(roomType.price.replace(/[^0-9]/g, ""));
-  const totalPrice = priceNumber * memberCount;
+  const calculatedAmount = priceNumber * (memberCount - 1);
+  const totalPrice = calculatedAmount;
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -112,7 +137,7 @@ const PaymentModal = ({ setModal, roomType, memberCount, onPaymentComplete }: Mo
                 <div className={styles.stepContent}>
                   <div className={styles.brandLogo}>
                     <Image
-                      src={roomType.id === "starbucks" ? "/starbucks.png" : "/megacoffee.webp"}
+                      src={roomType.icon}
                       alt={roomType.name}
                       width={100}
                       height={100}
@@ -121,12 +146,10 @@ const PaymentModal = ({ setModal, roomType, memberCount, onPaymentComplete }: Mo
                   </div>
 
                   <h2 className={styles.roomTitle}>{roomType.name}</h2>
-                  <p className={styles.roomSubtitle}>
-                    {roomType.id === "starbucks" ? "스타벅스 아이스 아메리카노 1잔" : "메가커피 아이스 아메리카노 1잔"}
-                  </p>
+                  <p className={styles.roomSubtitle}>{roomType.description}</p>
 
                   <div className={styles.priceDisplay}>
-                    <span className={styles.price}>{roomType.id === "starbucks" ? "4,841원" : "2,500원"}</span>
+                    <span className={styles.price}>{roomType.price}</span>
                   </div>
                 </div>
               </div>

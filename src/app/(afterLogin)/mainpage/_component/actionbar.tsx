@@ -35,7 +35,7 @@ interface RoomData {
   title: string;
   imageKey: string;
   imageVersion: number;
-  type: "BASIC" | string;
+  type: "BASIC" | "STANDARD" | "ELITE";
   memberCount: number;
   success: boolean;
   members: Member[];
@@ -48,6 +48,7 @@ interface Room {
   unreadCount?: number;
   memberCount?: number;
   members?: Member[];
+  type?: "BASIC" | "STANDARD" | "ELITE";
 }
 
 interface ActionBarProps {
@@ -155,6 +156,7 @@ export default function ActionBar({
         unreadCount: room.unreadCount || 0,
         memberCount: room.memberCount || 0,
         members: room.members || [],
+        type: room.type || "BASIC",
       }));
 
       console.log("ActionBar: 방 개수:", convertedRooms.length);

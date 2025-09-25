@@ -20,7 +20,7 @@ import { useChatMessages } from "@/hooks/useChatMessages";
 interface MessageAttachment {
   fileId: number;
   sortOrder: number;
-  uploaderId: number; // ✅ 추가
+  uploaderId: number;
   name: string;
   type: "IMAGE" | "FILE" | "VIDEO" | "AUDIO";
   mimeType: string;
@@ -61,6 +61,7 @@ interface ChatRoomProps {
     lastChat: string;
     members?: Member[];
     memberCount?: number;
+    type?: "BASIC" | "STANDARD" | "ELITE" | "DEMO";
   };
   onRoomUpdate?: (roomId: string, unreadCount: number) => void;
 }
@@ -118,7 +119,7 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
 
   // 현재 로그인한 사용자 정보
   const currentUser = {
-    id: Number(session?.userId), // ✅ 세션에서 실제 userId 사용
+    id: Number(session?.userId),
     name: session?.user?.name || "사용자",
     email: session?.user?.email || "",
     image: session?.user?.image || null,
@@ -153,7 +154,6 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
   });
 
   // WebSocket 훅
-  // onReadBoundaryUpdate 핸들러 추가
   const { isConnected, sendMessage: wsSendMessage } = useWebSocket({
     roomId,
     token,
@@ -251,6 +251,41 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
     setFileModalStatus(false);
   };
 
+  // 방 타입에 맞는 정보 가져오기
+  const getRoomTypeInfo = () => {
+    const roomTypes = [
+      {
+        id: "BASIC",
+        name: "Basic Room",
+        price: "팀원당 2060원",
+        description: "메가커피 아이스 아메리카노 1개",
+        icon: "/megacoffe.webp",
+        iconClass: "megacoffeeIcon",
+      },
+      {
+        id: "STANDARD",
+        name: "Standard Room",
+        price: "팀원당 4841원",
+        description: "스타벅스 아이스 아메리카노 1개",
+        icon: "/starbucks.png",
+        iconClass: "starbucksIcon",
+      },
+      {
+        id: "ELITE",
+        name: "Elite Room",
+        price: "팀원당 8240원",
+        description: "스타벅스 아이스 아메리카노 1개 + 프렌치 크루아상",
+        icon: "/starbucks.png",
+        iconClass: "starbucksIcon",
+        isElite: true,
+      },
+    ];
+
+    // DEMO 타입이면 BASIC 정보 반환
+    const roomType = roomData.type === "DEMO" ? "BASIC" : roomData.type || "BASIC";
+    return roomTypes.find((type) => type.id === roomType) || roomTypes[0];
+  };
+
   // Payment 처리 완료 핸들러
   const handlePaymentComplete = (): void => {
     setShowPayment(false);
@@ -289,14 +324,7 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
             {showPayment ? (
               <PaymentModal
                 setModal={() => setShowPayment(false)}
-                roomType={{
-                  id: "starbucks",
-                  name: "Standard Room",
-                  price: "4841원",
-                  description: "스타벅스 아이스 아메리카노 1잔",
-                  icon: "/starbucks.png",
-                  iconClass: "starbucksIcon",
-                }}
+                roomType={getRoomTypeInfo()}
                 memberCount={memberCount}
                 onPaymentComplete={handlePaymentComplete}
               />
