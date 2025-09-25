@@ -35,11 +35,11 @@ interface ChatMessage {
   createdAt: string;
   sender: SenderSummary;
   attachments: MessageAttachment[];
+  readBy?: number[]; // ✅ 읽음 상태 추가
 }
 
-// ✅ 수정: items로 변경
 interface ChatMessagePageResponse {
-  items: ChatMessage[]; // messages → items
+  items: ChatMessage[];
   hasNext: boolean;
   nextCursor: number | null;
 }
@@ -47,9 +47,10 @@ interface ChatMessagePageResponse {
 interface UseChatMessagesProps {
   roomId: string;
   token: string;
+  currentUserId: number; // ✅ 현재 사용자 ID 추가
 }
 
-export const useChatMessages = ({ roomId, token }: UseChatMessagesProps) => {
+export const useChatMessages = ({ roomId, token, currentUserId }: UseChatMessagesProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -100,11 +101,16 @@ export const useChatMessages = ({ roomId, token }: UseChatMessagesProps) => {
         const data: ChatMessagePageResponse = await response.json();
         console.log("메시지 조회 성공:", data.items.length, "개");
 
-        // ✅ 수정: data.messages → data.items
+        // ✅ 각 메시지에 readBy 초기화 (발신자만 포함)
+        const messagesWithReadBy = data.items.map((msg) => ({
+          ...msg,
+          readBy: [msg.sender.id || 0],
+        }));
+
         if (isInitial) {
-          setMessages(data.items.reverse());
+          setMessages(messagesWithReadBy.reverse());
         } else {
-          setMessages((prev) => [...data.items.reverse(), ...prev]);
+          setMessages((prev) => [...messagesWithReadBy.reverse(), ...prev]);
         }
 
         setHasMore(data.hasNext);
@@ -130,8 +136,34 @@ export const useChatMessages = ({ roomId, token }: UseChatMessagesProps) => {
     }
   }, [hasMore, cursor, fetchMessages]);
 
+  // ✅ 새 메시지 추가 시 readBy 포함
   const addMessage = useCallback((newMessage: ChatMessage) => {
-    setMessages((prev) => [...prev, newMessage]);
+    setMessages((prev) => [
+      ...prev,
+      {
+        ...newMessage,
+        readBy: [newMessage.sender.id || 0], // 발신자만 읽음 상태로 초기화
+      },
+    ]);
+  }, []);
+
+  // ✅ 읽음 경계 업데이트 처리 함수 추가
+  const updateReadBoundary = useCallback((userId: number, lastReadMessageId: number) => {
+    setMessages((prev) =>
+      prev.map((msg) => {
+        // 해당 메시지 ID 이하의 모든 메시지를 읽음 처리
+        if (msg.messageId <= lastReadMessageId) {
+          const readBy = msg.readBy || [msg.sender.id || 0];
+          if (!readBy.includes(userId)) {
+            return {
+              ...msg,
+              readBy: [...readBy, userId],
+            };
+          }
+        }
+        return msg;
+      })
+    );
   }, []);
 
   const markAsRead = useCallback(
@@ -157,12 +189,19 @@ export const useChatMessages = ({ roomId, token }: UseChatMessagesProps) => {
           throw new Error("읽음 처리 실패");
         }
 
-        return await response.json();
+        const result = await response.json();
+
+        // ✅ 자신의 읽음 상태도 로컬에 반영
+        if (lastReadMessageId) {
+          updateReadBoundary(currentUserId, lastReadMessageId);
+        }
+
+        return result;
       } catch (error) {
         console.error("읽음 처리 오류:", error);
       }
     },
-    [roomId, token]
+    [roomId, token, currentUserId, updateReadBoundary]
   );
 
   useEffect(() => {
@@ -181,6 +220,7 @@ export const useChatMessages = ({ roomId, token }: UseChatMessagesProps) => {
     addMessage,
     loadMoreMessages,
     markAsRead,
+    updateReadBoundary, // ✅ 외부에서 사용할 수 있도록 export
     refreshMessages: loadInitialMessages,
   };
 };
