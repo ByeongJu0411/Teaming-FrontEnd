@@ -9,7 +9,7 @@ declare module "next-auth" {
       email: string;
       image?: string;
     };
-
+    userId?: number; // userId 추가
     accessToken?: string;
     refreshToken?: string;
     provider?: string;
@@ -31,6 +31,7 @@ declare module "next-auth" {
     image?: string;
     accessToken?: string;
     refreshToken?: string;
+    userId?: number; // userId 추가
   }
 }
 
@@ -40,6 +41,7 @@ declare module "next-auth/jwt" {
     name?: string;
     email?: string;
     image?: string;
+    userId?: number; // userId 추가
     backendAccessToken?: string;
     backendRefreshToken?: string;
     backendTokenExpires?: number;

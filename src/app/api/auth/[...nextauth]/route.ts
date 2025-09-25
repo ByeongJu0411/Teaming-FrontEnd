@@ -13,6 +13,7 @@ interface BackendJWTResponse {
   accessToken: string;
   refreshToken: string;
   expiresIn?: number;
+  userId?: number;
 }
 
 /**
@@ -25,6 +26,20 @@ function getTokenExpiration(token: string): number | null {
   } catch (error) {
     console.error("JWT 토큰 파싱 실패:", error);
     return null;
+  }
+}
+
+/**
+ * JWT 토큰에서 userId를 추출하는 함수
+ */
+function extractUserIdFromToken(token: string): number | undefined {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    const id = payload.userId || payload.sub || payload.id;
+    return typeof id === "number" ? id : typeof id === "string" ? parseInt(id, 10) : undefined;
+  } catch (error) {
+    console.error("JWT userId 추출 실패:", error);
+    return undefined;
   }
 }
 
@@ -65,12 +80,14 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 
     const tokenExpiration = getTokenExpiration(refreshedTokens.accessToken);
     const fallbackExpiration = Date.now() + 7 * 24 * 60 * 60 * 1000;
+    const userId = extractUserIdFromToken(refreshedTokens.accessToken);
 
     return {
       ...token,
       backendAccessToken: refreshedTokens.accessToken,
       backendRefreshToken: token.backendRefreshToken,
       backendTokenExpires: tokenExpiration || fallbackExpiration,
+      userId: userId || token.userId,
       backendError: false,
     };
   } catch (error) {
@@ -108,17 +125,18 @@ const handler = NextAuth({
           return null;
         }
 
-        // 이미 LoginForm에서 백엔드 API를 호출했고 토큰을 받았으므로
-        // 여기서는 전달받은 토큰을 검증하고 사용자 정보를 반환
         if (credentials.accessToken && credentials.refreshToken) {
           console.log("백엔드에서 받은 토큰 사용");
 
+          const userId = extractUserIdFromToken(credentials.accessToken);
+
           return {
-            id: "user-id", // 임시 ID
+            id: userId?.toString() || "temp-id",
             email: credentials.email,
-            name: "사용자", // 기본 이름
+            name: "사용자",
             accessToken: credentials.accessToken,
             refreshToken: credentials.refreshToken,
+            userId: userId,
           };
         }
 
@@ -209,19 +227,21 @@ const handler = NextAuth({
 
           const tokenExpiration = getTokenExpiration(user.accessToken);
           const fallbackExpiration = Date.now() + 7 * 24 * 60 * 60 * 1000;
+          const userId = typeof user.userId === "number" ? user.userId : extractUserIdFromToken(user.accessToken);
 
           token.backendAccessToken = user.accessToken;
           token.backendRefreshToken = user.refreshToken;
           token.backendTokenExpires = tokenExpiration || fallbackExpiration;
+          token.userId = userId;
           token.provider = "credentials";
           token.backendError = false;
 
-          console.log("백엔드 토큰 저장 완료");
+          console.log("백엔드 토큰 저장 완료, userId:", userId);
         }
       }
 
       /**
-       * 토큰 만료 체크 및 자동 갱신 (소셜 로그인과 일반 로그인 모두)
+       * 토큰 만료 체크 및 자동 갱신
        */
       if (!account && token.backendAccessToken && token.backendTokenExpires) {
         const now = Date.now();
@@ -268,21 +288,15 @@ const handler = NextAuth({
 
           console.log("백엔드 요청 URL:", fullUrl);
 
-          const requestBody = {
-            accessToken: account.access_token,
-          };
-
-          console.log("요청 데이터:", {
-            accessToken: account.access_token?.substring(0, 20) + "...",
-          });
-
           const response = await fetch(fullUrl, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               Accept: "application/json",
             },
-            body: JSON.stringify(requestBody),
+            body: JSON.stringify({
+              accessToken: account.access_token,
+            }),
           });
 
           console.log("백엔드 응답 상태:", response.status);
@@ -297,14 +311,16 @@ const handler = NextAuth({
 
               const tokenExpiration = getTokenExpiration(backendTokens.accessToken);
               const fallbackExpiration = Date.now() + (backendTokens.expiresIn || 7 * 24 * 60 * 60) * 1000;
+              const userId = backendTokens.userId || extractUserIdFromToken(backendTokens.accessToken);
 
               token.backendAccessToken = backendTokens.accessToken;
               token.backendRefreshToken = backendTokens.refreshToken;
               token.backendTokenExpires = tokenExpiration || fallbackExpiration;
+              token.userId = userId;
               token.provider = account.provider;
               token.backendError = false;
 
-              console.log("백엔드 토큰 저장 완료");
+              console.log("백엔드 토큰 저장 완료, userId:", userId);
             } catch (parseError) {
               console.error("JSON 파싱 실패:", parseError);
               token.backendError = true;
@@ -331,6 +347,7 @@ const handler = NextAuth({
         hasBackendToken: !!token.backendAccessToken,
         hasError: !!token.backendError,
         provider: token.provider,
+        userId: token.userId,
         userName: token.name,
         tokenExpires: token.backendTokenExpires
           ? new Date(token.backendTokenExpires as number).toLocaleString()
@@ -344,33 +361,25 @@ const handler = NextAuth({
       console.log("=== SESSION CALLBACK ===");
 
       // 사용자 정보를 세션에 추가
-      if (token.name) session.user.name = token.name as string;
-      if (token.email) session.user.email = token.email as string;
-      if (token.image) session.user.image = token.image as string;
-      if (token.id) session.user.id = token.id as string;
+      session.user.id = token.id as string;
+      session.user.name = (token.name as string) || "";
+      session.user.email = (token.email as string) || "";
+      session.user.image = token.image as string;
 
       // 백엔드 관련 정보를 세션에 추가
       session.accessToken = token.backendAccessToken as string;
       session.refreshToken = token.backendRefreshToken as string;
+      session.userId = typeof token.userId === "number" ? token.userId : undefined;
       session.provider = token.provider as string;
       session.isBackendAuthenticated = !!token.backendAccessToken && !token.backendError;
       session.tokenExpires = token.backendTokenExpires as number;
 
       // 백엔드 에러 정보가 있는 경우 세션에 포함
       if (token.backendError) {
-        const sessionWithError = session as typeof session & {
-          backendError?: {
-            hasError: boolean;
-            status: number;
-            message: string;
-            isNetworkError: boolean;
-          };
-        };
-
-        sessionWithError.backendError = {
+        session.backendError = {
           hasError: true,
-          status: token.backendErrorStatus as number,
-          message: token.backendErrorMessage as string,
+          status: (token.backendErrorStatus as number) || 500,
+          message: (token.backendErrorMessage as string) || "Unknown error",
           isNetworkError: !!token.networkError,
         };
       }
@@ -378,6 +387,7 @@ const handler = NextAuth({
       console.log("세션 생성 완료:", {
         isBackendAuthenticated: session.isBackendAuthenticated,
         hasBackendError: !!token.backendError,
+        userId: session.userId,
         provider: session.provider,
         userName: session.user.name,
       });
