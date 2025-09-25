@@ -30,6 +30,7 @@ interface LastMessage {
 
 interface RoomData {
   roomId: number;
+  role: "LEADER" | "MEMBER";
   unreadCount: number;
   lastMessage: LastMessage;
   title: string;
@@ -49,6 +50,7 @@ interface Room {
   memberCount?: number;
   members?: Member[];
   type?: "BASIC" | "STANDARD" | "ELITE";
+  role?: "LEADER" | "MEMBER";
 }
 
 interface ActionBarProps {
@@ -157,6 +159,7 @@ export default function ActionBar({
         memberCount: room.memberCount || 0,
         members: room.members || [],
         type: room.type || "BASIC",
+        role: room.role || "MEMBER",
       }));
 
       console.log("ActionBar: 방 개수:", convertedRooms.length);
