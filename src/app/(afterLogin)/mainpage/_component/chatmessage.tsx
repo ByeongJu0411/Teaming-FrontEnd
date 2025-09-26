@@ -28,10 +28,23 @@ interface ChatMessageProps {
   currentUserId: number;
   showSenderName?: boolean;
   isLastMessage?: boolean;
-  allUsers: Array<{ id: number; name: string; avatar: string }>;
+  allUsers: Array<{
+    id: number;
+    name: string;
+    avatar: string;
+    avatarKey?: string;
+    avatarVersion?: number;
+  }>;
   hoveredMessage: number | null;
   setHoveredMessage: (id: number | null) => void;
 }
+
+// 기본 아바타 생성 함수
+const generateAvatar = (name: string): string => {
+  const avatars = ["🐱", "🐶", "🐰", "🐻", "🐼", "🐨", "🐯", "🦁", "🐸", "🐵"];
+  const index = name.length % avatars.length;
+  return avatars[index];
+};
 
 export default function ChatMessage({
   message,
@@ -45,6 +58,11 @@ export default function ChatMessage({
   const { data: session } = useSession();
   const isMyMessage = message.senderId === currentUserId;
   const isSystemMessage = message.messageType === "SYSTEM" || message.messageType === "SYSTEM_NOTICE";
+
+  // 발신자 정보 찾기
+  const sender = allUsers.find((user) => user.id === message.senderId);
+  const senderAvatar = sender?.avatar || generateAvatar(message.senderName);
+  const isAvatarUrl = senderAvatar.startsWith("http") || senderAvatar.startsWith("/");
 
   // 파일 다운로드 핸들러
   const handleDownload = async (fileId: number | undefined) => {
@@ -140,7 +158,31 @@ export default function ChatMessage({
         {/* 상대방 메시지일 때 아바타 영역 - 항상 공간 유지 */}
         {!isMyMessage && (
           <div className={styles.avatarSpace}>
-            {showSenderName && <div className={styles.senderAvatar}>{message.senderName[0]}</div>}
+            {showSenderName && (
+              <div className={styles.senderAvatar}>
+                {isAvatarUrl ? (
+                  <Image
+                    src={senderAvatar}
+                    alt={message.senderName}
+                    width={36}
+                    height={36}
+                    className={styles.avatarImage}
+                    unoptimized
+                    onError={(e) => {
+                      // 이미지 로드 실패 시 이모지로 대체
+                      const target = e.currentTarget;
+                      target.style.display = "none";
+                      const parent = target.parentElement;
+                      if (parent) {
+                        parent.textContent = generateAvatar(message.senderName);
+                      }
+                    }}
+                  />
+                ) : (
+                  <span className={styles.emojiAvatar}>{senderAvatar}</span>
+                )}
+              </div>
+            )}
           </div>
         )}
 

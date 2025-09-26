@@ -44,6 +44,7 @@ interface Member {
   name: string;
   avatarKey: string;
   avatarVersion: number;
+  avatarUrl?: string;
   roomRole: "LEADER" | string;
 }
 
@@ -66,6 +67,7 @@ interface ChatRoomProps {
     memberCount?: number;
     type?: "BASIC" | "STANDARD" | "ELITE" | "DEMO";
     role?: "LEADER" | "MEMBER";
+    roomImageUrl?: string; // 방 이미지 URL 추가
   };
   onRoomUpdate?: (roomId: string, unreadCount: number) => void;
 }
@@ -201,9 +203,7 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
 
   // 멤버 정보를 ChatMessage에서 사용할 수 있는 형태로 변환
   const chatUsers: ChatUser[] = actualMembers.map((member: Member) => {
-    const avatarUrl = member.avatarKey
-      ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/files/${member.avatarKey}?v=${member.avatarVersion}`
-      : "";
+    const avatarUrl = member.avatarUrl || "";
 
     return {
       id: member.memberId,
@@ -353,11 +353,7 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
       const messageType = fileType === "IMAGE" ? "IMAGE" : "FILE";
 
       // 5. WebSocket으로 파일 메시지 전송 (fileId 배열로 전달)
-      const fileMessageSuccess = wsSendMessage(
-        file.name, // 파일명을 content로 전송
-        messageType,
-        [completeData.fileId] // fileId를 배열로 전달
-      );
+      const fileMessageSuccess = wsSendMessage(file.name, messageType, [completeData.fileId]);
 
       if (fileMessageSuccess) {
         alert(`파일 "${file.name}"이 성공적으로 업로드되었습니다!`);
@@ -513,7 +509,23 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
       <div className={styles.container}>
         <div className={styles.chatPage}>
           <div className={styles.chatHeader}>
-            <div className={styles.chatRoomImg}></div>
+            <div className={styles.chatRoomImg}>
+              {roomData.roomImageUrl && roomData.roomImageUrl !== "/good_space1.jpg" ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={roomData.roomImageUrl}
+                  alt={roomData.name}
+                  className={styles.chatRoomImage}
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    target.src = "/good_space1.jpg";
+                  }}
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src="/good_space1.jpg" alt="기본 프로필" className={styles.chatRoomImage} />
+              )}
+            </div>
             <p className={styles.chatRoomName}>{roomData.name}</p>
             <div className={styles.connectionStatus}>
               {isConnected && <span className={styles.connected}>●</span>}
@@ -599,7 +611,23 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
 
         <div className={styles.chatRoomInfo}>
           <div className={styles.chatRoomInfoHeader}>
-            <div className={styles.chatRoomInfoImg}></div>
+            <div className={styles.chatRoomInfoImg}>
+              {roomData.roomImageUrl && roomData.roomImageUrl !== "/good_space1.jpg" ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={roomData.roomImageUrl}
+                  alt={roomData.name}
+                  className={styles.chatRoomInfoImage}
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    target.src = "/good_space1.jpg";
+                  }}
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src="/good_space1.jpg" alt="기본 프로필" className={styles.chatRoomInfoImage} />
+              )}
+            </div>
             <div className={styles.chatRoomInfoName}>{roomData.name}</div>
           </div>
 
@@ -607,34 +635,40 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
             <div className={styles.userListTitle}>참여자 ({memberCount})</div>
             {actualMembers.length > 0 ? (
               actualMembers.map((member: Member) => {
-                const avatarUrl = member.avatarKey
-                  ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/files/${member.avatarKey}?v=${member.avatarVersion}`
-                  : "";
+                const avatarUrl = member.avatarUrl || "";
+                const hasAvatar = !!avatarUrl;
 
                 return (
                   <div key={member.memberId} className={styles.userItem}>
                     <div className={styles.userAvatar}>
-                      {avatarUrl ? (
-                        <Image
-                          src={avatarUrl}
-                          alt={member.name}
-                          width={40}
-                          height={40}
-                          className={styles.avatarImage}
-                          unoptimized
-                          onError={(e) => {
-                            const target = e.currentTarget;
-                            target.style.display = "none";
-                            const nextSibling = target.nextElementSibling as HTMLElement;
-                            if (nextSibling) {
-                              nextSibling.style.display = "block";
-                            }
-                          }}
-                        />
-                      ) : null}
-                      <span className={styles.emojiAvatar} style={{ display: avatarUrl ? "none" : "block" }}>
-                        {generateAvatar(member.name)}
-                      </span>
+                      {hasAvatar ? (
+                        <>
+                          <Image
+                            src={avatarUrl}
+                            alt={member.name}
+                            width={40}
+                            height={40}
+                            className={styles.avatarImage}
+                            unoptimized
+                            onError={(e) => {
+                              const target = e.currentTarget;
+                              target.style.display = "none";
+                              const parent = target.parentElement;
+                              if (parent) {
+                                const emojiSpan = parent.querySelector(`.${styles.emojiAvatar}`) as HTMLElement;
+                                if (emojiSpan) {
+                                  emojiSpan.style.display = "flex";
+                                }
+                              }
+                            }}
+                          />
+                          <span className={styles.emojiAvatar} style={{ display: "none" }}>
+                            {generateAvatar(member.name)}
+                          </span>
+                        </>
+                      ) : (
+                        <span className={styles.emojiAvatar}>{generateAvatar(member.name)}</span>
+                      )}
                     </div>
                     <div className={styles.userInfo}>
                       <div className={styles.userName}>
@@ -679,7 +713,6 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
         </div>
       </div>
 
-      {/* 이미지 파일 input (이미지만 선택 가능) */}
       <input
         type="file"
         ref={imageFileRef}
@@ -688,7 +721,6 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
         onChange={handleImageFileChange}
       />
 
-      {/* 문서 파일 input (문서만 선택 가능) */}
       <input
         type="file"
         ref={documentFileRef}
@@ -715,7 +747,13 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
         </div>
       )}
 
-      {dataRoomModalStatus && <DataRoom setModal={() => setDataRoomModalStatus(!dataRoomModalStatus)} />}
+      {dataRoomModalStatus && (
+        <DataRoom
+          setModal={() => setDataRoomModalStatus(!dataRoomModalStatus)}
+          roomId={roomData.id}
+          members={actualMembers}
+        />
+      )}
 
       {missionModalStatus && (
         <CreateMission

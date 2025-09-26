@@ -57,7 +57,7 @@ interface RoomType {
 
 // CreateRoom Props 타입 (부모 컴포넌트에서 전달받음)
 interface CreateRoomProps {
-  onRoomCreated?: () => void; // 방 생성 완료 시 호출될 콜백
+  onRoomCreated?: () => void;
 }
 
 // 모달 컴포넌트
@@ -77,7 +77,6 @@ const InviteLinkModal = ({ isOpen, onClose, inviteCode, roomTitle }: InviteLinkM
   };
 
   const shareViaKakao = (): void => {
-    // 카카오톡 공유 기능 (카카오 SDK가 필요)
     if (typeof window !== "undefined" && window.Kakao) {
       window.Kakao.Share.sendDefault({
         objectType: "text",
@@ -88,7 +87,6 @@ const InviteLinkModal = ({ isOpen, onClose, inviteCode, roomTitle }: InviteLinkM
         },
       });
     } else {
-      // 카카오 SDK가 없는 경우 기본 공유
       if (navigator.share) {
         navigator
           .share({
@@ -149,7 +147,7 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
   const [roomTitle, setRoomTitle] = useState<string>("");
   const [roomSubTitle, setRoomSubTitle] = useState<string>("");
   const [selectedRoom, setSelectedRoom] = useState<string>("");
-  const [, setProfileImage] = useState<File | null>(null);
+  const [profileImage, setProfileImage] = useState<File | null>(null);
   const [profileImagePreview, setProfileImagePreview] = useState<string>("/basicProfile.webp");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showModal, setShowModal] = useState<boolean>(false);
@@ -215,7 +213,6 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
   const handleModalClose = (): void => {
     setShowModal(false);
 
-    // 부모 컴포넌트에 방 생성 완료를 알림 (refreshTrigger 업데이트)
     if (onRoomCreated) {
       onRoomCreated();
     }
@@ -227,6 +224,99 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
     setTeamCount(1);
     removeProfileImage();
     setInviteCode("");
+  };
+
+  // 이미지 업로드 함수 (Intent → S3 → Complete)
+  const uploadRoomImage = async (roomId: number): Promise<void> => {
+    if (!profileImage || !session?.accessToken) {
+      return;
+    }
+
+    try {
+      const token = session.accessToken;
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080";
+
+      console.log("=== 방 이미지 업로드 시작 ===");
+      console.log("파일 정보:", {
+        name: profileImage.name,
+        size: profileImage.size,
+        type: profileImage.type,
+      });
+
+      // 1. Intent API 요청
+      const requestBody = {
+        fileName: profileImage.name,
+        contentType: profileImage.type,
+        size: profileImage.size,
+      };
+
+      const intentResponse = await fetch(`${backendUrl}/files/intent/${roomId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log("Intent API 응답 상태:", intentResponse.status);
+
+      if (!intentResponse.ok) {
+        const errorText = await intentResponse.text();
+        console.error("Intent API 실패:", errorText);
+        throw new Error(`이미지 업로드 준비 실패: ${errorText}`);
+      }
+
+      const intentData = await intentResponse.json();
+      console.log("Intent 성공:", intentData);
+
+      // 2. S3에 파일 업로드
+      console.log("=== S3 업로드 시작 ===");
+      const s3UploadResponse = await fetch(intentData.url, {
+        method: "PUT",
+        headers: {
+          "Content-Type": profileImage.type,
+        },
+        body: profileImage,
+      });
+
+      console.log("S3 업로드 응답 상태:", s3UploadResponse.status);
+
+      if (!s3UploadResponse.ok) {
+        const errorText = await s3UploadResponse.text();
+        console.error("S3 업로드 실패:", errorText);
+        throw new Error("이미지 업로드에 실패했습니다.");
+      }
+
+      console.log("S3 업로드 성공!");
+
+      // 3. Complete API 호출
+      console.log("=== 이미지 업로드 확정 시작 ===");
+      const completeResponse = await fetch(`${backendUrl}/files/complete/${roomId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          key: intentData.key,
+        }),
+      });
+
+      console.log("Complete API 응답 상태:", completeResponse.status);
+
+      if (!completeResponse.ok) {
+        const errorText = await completeResponse.text();
+        console.error("Complete API 실패:", errorText);
+        throw new Error("이미지 업로드 확정에 실패했습니다.");
+      }
+
+      const completeData = await completeResponse.json();
+      console.log("이미지 업로드 완료:", completeData);
+    } catch (error) {
+      console.error("방 이미지 업로드 오류:", error);
+      throw error;
+    }
   };
 
   // 메인 API 호출 함수
@@ -280,13 +370,13 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
         title: roomTitle,
         description: roomSubTitle || "",
         memberCount: teamCount,
-        roomType: roomTitle === "전병주 멋쟁이" ? "DEMO" : selectedRoom, // 조건부 roomType 설정
+        roomType: roomTitle === "전병주 멋쟁이" ? "DEMO" : selectedRoom,
       };
 
       console.log("CreateRoom: 방 생성 요청 시작");
       console.log("Request Data:", JSON.stringify(roomData, null, 2));
 
-      // 7. API 호출
+      // 7. 방 생성 API 호출
       const response = await fetch(`${backendUrl}/rooms`, {
         method: "POST",
         headers: {
@@ -316,7 +406,20 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
       const result = await response.json();
       console.log("CreateRoom: 방 생성 성공:", result);
 
-      // 9. 응답에서 inviteCode 추출
+      // 9. 방 생성 성공 후 이미지 업로드 (프로필 이미지가 있는 경우)
+      if (profileImage && result.roomId) {
+        console.log("방 이미지 업로드 시작...");
+        try {
+          await uploadRoomImage(result.roomId);
+          console.log("방 이미지 업로드 완료!");
+        } catch (imageError) {
+          console.error("방 이미지 업로드 실패:", imageError);
+          // 이미지 업로드 실패해도 방 생성은 성공이므로 계속 진행
+          alert("방은 생성되었으나 이미지 업로드에 실패했습니다.");
+        }
+      }
+
+      // 10. 응답에서 inviteCode 추출
       if (result.inviteCode) {
         setInviteCode(result.inviteCode);
         setShowModal(true);
@@ -331,7 +434,6 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
       setIsLoading(false);
     }
   };
-
   return (
     <div className={styles.createRoom}>
       <p className={styles.titleUpdated}>티밍룸 생성</p>

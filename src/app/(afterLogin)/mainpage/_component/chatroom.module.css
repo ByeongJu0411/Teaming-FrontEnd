@@ -265,11 +265,18 @@
   flex-shrink: 0; /* 크기 고정 */
 }
 
-.chatRoomInfoImg {
+.chatRoomImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.chatRoomInfoImage {
   width: 80px;
   height: 80px;
-  background-color: #838383;
-  border-radius: 50px;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
 .chatRoomInfoName {
