@@ -598,3 +598,118 @@
     left: auto;
   }
 }
+
+/* 나가기 모달 오버레이 */
+.exitModalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* SpotlightCard 컨테이너 */
+.exitModalCard {
+  min-width: 400px;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 모달 내용 */
+.exitModalContent {
+  display: flex;
+  width: 500px;
+  height: 300px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  color: white;
+}
+
+.exitModalTitle {
+  font-size: 2rem;
+  font-weight: bold;
+  margin: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.exitModalDescription {
+  font-size: 1rem;
+  color: #aaa;
+  margin: 0;
+  text-align: center;
+}
+
+/* 버튼 컨테이너 */
+.exitModalButtons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+/* 확인 버튼 */
+.exitModalConfirm {
+  padding: 0.75rem 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.exitModalConfirm:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* 취소 버튼 */
+.exitModalCancel {
+  padding: 0.75rem 2rem;
+  background: transparent;
+  color: #aaa;
+  border: 1px solid #444;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.exitModalCancel:hover {
+  background: #222;
+  color: white;
+  border-color: #666;
+}
