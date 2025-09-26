@@ -11,20 +11,21 @@ interface Member {
   memberId: number;
   lastReadMessageId: number;
   name: string;
-  avatarKey: string;
-  avatarVersion: number;
-  avatarUrl?: string;
+  avatarKey?: string;
+  avatarVersion?: number;
+  avatarUrl: string; // API에서 직접 제공
   roomRole: "LEADER" | string;
 }
 
 interface LastMessage {
   id: number;
-  type: "TEXT" | string;
+  type: "TEXT" | "IMAGE" | "FILE" | "VIDEO" | "AUDIO" | "SYSTEM_NOTICE";
   content: string;
   sender: {
     id: number;
     name: string;
     avatarUrl: string;
+    avatarVersion: number;
   };
   createdAt: string;
 }
@@ -37,10 +38,11 @@ interface RoomData {
   title: string;
   imageKey: string;
   imageVersion: number;
-  type: "BASIC" | "STANDARD" | "ELITE";
+  type: "BASIC" | "STANDARD" | "ELITE" | "DEMO";
   memberCount: number;
   success: boolean;
   members: Member[];
+  avatarUrl: string;
 }
 
 interface Room {
@@ -50,8 +52,9 @@ interface Room {
   unreadCount?: number;
   memberCount?: number;
   members?: Member[];
-  type?: "BASIC" | "STANDARD" | "ELITE";
+  type?: "BASIC" | "STANDARD" | "ELITE" | "DEMO";
   role?: "LEADER" | "MEMBER";
+  roomImageUrl?: string; // 방 이미지 URL 추가
 }
 
 interface ActionBarProps {
@@ -152,16 +155,33 @@ export default function ActionBar({
         throw new Error("서버 응답이 배열 형식이 아닙니다.");
       }
 
-      const convertedRooms: Room[] = data.map((room) => ({
-        id: room.roomId?.toString() || "0",
-        name: room.title || "제목 없음",
-        lastChat: room.lastMessage?.content || "메시지가 없습니다",
-        unreadCount: room.unreadCount || 0,
-        memberCount: room.memberCount || 0,
-        members: room.members || [],
-        type: room.type || "BASIC",
-        role: room.role || "MEMBER",
-      }));
+      const convertedRooms: Room[] = data.map((room) => {
+        // API에서 받은 avatarUrl을 그대로 사용
+        const membersWithAvatarUrl = room.members.map((member) => ({
+          ...member,
+          // API에서 이미 제공된 avatarUrl을 그대로 유지
+          avatarUrl: member.avatarUrl || "",
+        }));
+
+        console.log("ActionBar - 변환된 멤버:", membersWithAvatarUrl);
+
+        // 방 이미지 URL 생성 (avatarUrl이 없으면 기본 이미지)
+        const roomImageUrl = room.avatarUrl
+          ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/files/${room.imageKey}?v=${room.imageVersion}`
+          : "/good_space1.jpg";
+
+        return {
+          id: room.roomId?.toString() || "0",
+          name: room.title || "제목 없음",
+          lastChat: room.lastMessage?.content || "메시지가 없습니다",
+          unreadCount: room.unreadCount || 0,
+          memberCount: room.memberCount || 0,
+          members: membersWithAvatarUrl,
+          type: room.type || "BASIC",
+          role: room.role || "MEMBER",
+          roomImageUrl: roomImageUrl, // 방 이미지 URL 추가
+        };
+      });
 
       console.log("ActionBar: 방 개수:", convertedRooms.length);
       setRooms(convertedRooms);
@@ -324,7 +344,23 @@ export default function ActionBar({
               className={`${styles.roomItem} ${selectedRoom?.id === room.id ? styles.selectedRoom : ""}`}
               onClick={() => handleRoomClick(room)}
             >
-              <div className={styles.roomImg}></div>
+              <div className={styles.roomImg}>
+                {room.roomImageUrl && room.roomImageUrl !== "/good_space1.jpg" ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={room.roomImageUrl}
+                    alt={room.name}
+                    className={styles.roomImage}
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      target.src = "/good_space1.jpgp";
+                    }}
+                  />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src="/good_space1.jpg" alt="기본 프로필" className={styles.roomImage} />
+                )}
+              </div>
               <div className={styles.roomInfo}>
                 <div className={styles.roomHeader}>
                   <p className={styles.roomName}>{room.name}</p>
@@ -333,7 +369,6 @@ export default function ActionBar({
                   <p className={styles.lastChat}>{room.lastChat}</p>
                 </div>
               </div>
-              {/*<div className={styles.unreadBadge}>{room.unreadCount}</div>*/}
             </div>
           ))
         )}

@@ -261,15 +261,22 @@ const AssignmentDetail: React.FC<AssignmentDetailProps> = ({
                           onError={(e) => {
                             const target = e.currentTarget;
                             target.style.display = "none";
-                            const nextSibling = target.nextElementSibling as HTMLElement;
-                            if (nextSibling) {
-                              nextSibling.style.display = "block";
+                            const parent = target.parentElement;
+                            if (parent) {
+                              const emojiSpan = parent.querySelector("span") as HTMLElement;
+                              if (emojiSpan) {
+                                emojiSpan.style.display = "flex";
+                              }
                             }
                           }}
                         />
-                      ) : (
-                        <span>{avatarData.value}</span>
-                      )}
+                      ) : null}
+                      <span
+                        className={styles.emojiAvatar}
+                        style={{ display: avatarData.type === "url" ? "none" : "flex" }}
+                      >
+                        {avatarData.value}
+                      </span>
                     </div>
                     <span className={styles.memberName}>{submission.memberName}</span>
                   </div>

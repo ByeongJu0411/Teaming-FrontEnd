@@ -10,7 +10,7 @@ interface Assignment {
   roomId: number;
   title: string;
   description: string;
-  deadline: string; // ISO 8601 format: "2025-01-24T10:52:52"
+  due: string; // 필드명을 deadline에서 due로 수정
   status: string; // "IN_PROGRESS" | "COMPLETED"
 }
 
@@ -114,7 +114,7 @@ export default function Welcome({ refreshTrigger }: WelcomeProps) {
       // 데이터 변환 및 마감일 기준 정렬
       const convertedItems: ScheduleItem[] = data
         .map((assignment) => {
-          const deadline = new Date(assignment.deadline);
+          const deadline = new Date(assignment.due); // due 필드 사용
           return {
             id: assignment.assignmentId,
             title: `${assignment.title} - ${formatDeadline(deadline)}`,

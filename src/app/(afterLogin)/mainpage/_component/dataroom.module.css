@@ -37,6 +37,29 @@
   flex-shrink: 0;
 }
 
+.avatarImage {
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.emojiAvatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.userAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #555;
+}
+
 .backButton {
   background: none;
   border: none;
@@ -117,11 +140,11 @@
 .fileItem {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.75rem;
   padding: 0.75rem;
   background-color: #333;
   border-radius: 6px;
-  cursor: pointer;
   transition: background-color 0.2s ease;
 }
 
@@ -129,15 +152,61 @@
   background-color: #404040;
 }
 
+.fileInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
 .fileIcon {
   font-size: 24px;
   flex-shrink: 0;
+}
+
+.fileDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  flex: 1;
 }
 
 .fileName {
   font-size: 14px;
   color: #f7f7f7;
   font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileSize {
+  font-size: 12px;
+  color: #999;
+}
+
+.downloadButton {
+  background-color: #3f3fd4;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.downloadButton:hover {
+  background-color: #3232b0;
+}
+
+.downloadButton:active {
+  transform: scale(0.95);
 }
 
 .noFiles {
@@ -146,6 +215,13 @@
   font-size: 14px;
   padding: 2rem;
   font-style: italic;
+}
+
+.loading {
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+  padding: 2rem;
 }
 
 /* 스크롤바 스타일링 */
@@ -182,8 +258,13 @@
     font-size: 16px;
   }
 
-  .uploadButton {
-    padding: 0.4rem 0.8rem;
-    font-size: 12px;
+  .fileItem {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .downloadButton {
+    width: 100%;
+    margin-top: 0.5rem;
   }
 }

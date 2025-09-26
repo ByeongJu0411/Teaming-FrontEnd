@@ -11,9 +11,9 @@ interface Assignment {
   creator: string;
   assignedMembers: string[];
   dueDate: string;
-  status: "진행중" | "완료" | "마감" | "취소"; // 취소 상태 추가
+  status: "진행중" | "완료" | "마감" | "취소";
   createdAt: string;
-  isCancelled?: boolean; // 취소 여부 플래그 추가
+  isCancelled?: boolean;
   submissions: {
     memberId: string;
     memberName: string;
@@ -34,13 +34,13 @@ interface SubmissionModalProps {
   assignment: Assignment;
   isOpen: boolean;
   onClose: () => void;
-  onSubmit?: (data: { text: string; files: File[] }) => void; // 옵셔널로 변경
+  onSubmit?: (data: { text: string; files: File[] }) => void;
   submissionText: string;
   setSubmissionText: (text: string) => void;
   submissionFiles: File[];
   setSubmissionFiles: React.Dispatch<React.SetStateAction<File[]>>;
-  roomId: number; // roomId 추가
-  onSuccess?: () => void; // 성공 시 콜백 추가
+  roomId: number;
+  onSuccess?: () => void;
 }
 
 const SubmissionModal: React.FC<SubmissionModalProps> = ({
@@ -91,7 +91,65 @@ const SubmissionModal: React.FC<SubmissionModalProps> = ({
     setSubmissionFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // API 호출 함수
+  // 파일 업로드 함수 (Intent → S3 → Complete)
+  const uploadFile = async (file: File): Promise<number> => {
+    const token = session?.accessToken;
+    if (!token) throw new Error("인증 토큰이 없습니다.");
+
+    // 1. Intent API
+    const intentResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/files/intent/${roomId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        fileName: file.name,
+        contentType: file.type,
+        size: file.size,
+      }),
+    });
+
+    if (!intentResponse.ok) {
+      throw new Error(`파일 업로드 준비 실패: ${await intentResponse.text()}`);
+    }
+
+    const intentData = await intentResponse.json();
+
+    // 2. S3 업로드
+    const s3Response = await fetch(intentData.url, {
+      method: "PUT",
+      headers: {
+        "Content-Type": file.type,
+      },
+      body: file,
+    });
+
+    if (!s3Response.ok) {
+      throw new Error("S3 업로드 실패");
+    }
+
+    // 3. Complete API
+    const completeResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/files/complete/${roomId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        key: intentData.key,
+      }),
+    });
+
+    if (!completeResponse.ok) {
+      throw new Error("파일 업로드 확정 실패");
+    }
+
+    const completeData = await completeResponse.json();
+    return completeData.fileId;
+  };
+
+  // 과제 제출 함수
   const submitAssignment = async () => {
     if (!session?.accessToken || !session?.isBackendAuthenticated) {
       alert("인증이 필요합니다. 로그인 상태를 확인해주세요.");
@@ -106,16 +164,28 @@ const SubmissionModal: React.FC<SubmissionModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      // API 스펙에 맞는 JSON 데이터 구성
+      // 파일이 있으면 모두 업로드
+      const fileIds: number[] = [];
+
+      if (submissionFiles.length > 0) {
+        console.log(`${submissionFiles.length}개의 파일 업로드 시작...`);
+
+        for (const file of submissionFiles) {
+          console.log(`파일 업로드 중: ${file.name}`);
+          const fileId = await uploadFile(file);
+          fileIds.push(fileId);
+          console.log(`파일 업로드 완료 - fileId: ${fileId}`);
+        }
+      }
+
+      // 과제 제출 API 호출
       const submissionData = {
-        assignmentId: parseInt(assignment.id), // number 형식으로 변환
+        assignmentId: parseInt(assignment.id),
         description: submissionText.trim(),
-        fileIds: [], // 현재는 파일 업로드 기능이 없으므로 빈 배열
+        fileIds: fileIds,
       };
 
-      console.log("과제 제출 요청:");
-      console.log("- roomId:", roomId);
-      console.log("- submissionData:", submissionData);
+      console.log("과제 제출 요청:", submissionData);
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080"}/rooms/${roomId}/assignments/submit`,
@@ -129,50 +199,39 @@ const SubmissionModal: React.FC<SubmissionModalProps> = ({
         }
       );
 
-      console.log("과제 제출 API 응답 상태:", response.status);
+      // response 객체 안전하게 처리
+      console.log("과제 제출 API 호출 완료");
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("과제 제출 실패:", response.status, errorText);
+
         if (response.status === 401) {
           throw new Error("인증이 만료되었습니다. 다시 로그인해주세요.");
         } else if (response.status === 403) {
           throw new Error("과제 제출 권한이 없습니다.");
         } else if (response.status === 404) {
           throw new Error("존재하지 않는 과제입니다.");
-        } else if (response.status === 405) {
-          throw new Error("서버에서 이 방법을 지원하지 않습니다. API 엔드포인트를 확인해주세요.");
         } else {
-          const errorText = await response.text();
-          console.error("과제 제출 API 오류:", errorText);
-          throw new Error(`서버 오류가 발생했습니다. (${response.status}): ${errorText}`);
+          throw new Error(`서버 오류 (${response.status}): ${errorText}`);
         }
       }
 
-      // 응답 처리 (JSON이 있는 경우에만 파싱)
-      let result = null;
-      const contentType = response.headers.get("content-type");
-
-      if (contentType && contentType.includes("application/json")) {
-        const responseText = await response.text();
-        if (responseText) {
-          try {
-            result = JSON.parse(responseText);
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          } catch (parseError) {
-            console.warn("JSON 파싱 실패, 하지만 제출은 성공:", responseText);
-          }
-        }
-      }
-
-      console.log("과제 제출 성공:", result || "응답 본문 없음");
-
-      // 성공 처리
-      alert("과제가 성공적으로 제출되었습니다!");
+      console.log("과제 제출 성공:", response.status);
 
       // 상태 초기화
       setSubmissionText("");
       setSubmissionFiles([]);
 
-      // 성공 콜백 호출 (부모에서 새로고침 등 처리)
+      // 모달 먼저 닫기
+      onClose();
+
+      // alert는 모달이 닫힌 후에 표시
+      setTimeout(() => {
+        alert("과제가 성공적으로 제출되었습니다!");
+      }, 100);
+
+      // 성공 콜백 호출 (AssignmentList 새로고침)
       if (onSuccess) {
         onSuccess();
       }
@@ -181,12 +240,9 @@ const SubmissionModal: React.FC<SubmissionModalProps> = ({
       if (onSubmit) {
         onSubmit({ text: submissionText, files: submissionFiles });
       }
-
-      // 모달 닫기
-      onClose();
     } catch (error) {
       console.error("과제 제출 실패:", error);
-      alert(`과제 제출에 실패했습니다:\n${error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다."}`);
+      alert(`과제 제출에 실패했습니다:\n${error instanceof Error ? error.message : "알 수 없는 오류"}`);
     } finally {
       setIsSubmitting(false);
     }

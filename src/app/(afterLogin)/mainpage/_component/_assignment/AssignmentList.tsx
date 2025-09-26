@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { FiClock, FiUser } from "react-icons/fi";
 import Image from "next/image";
@@ -89,6 +89,7 @@ const AssignmentList: React.FC<AssignmentListProps> = ({
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isUpdatingRef = useRef(false);
 
   // 취소된 과제 ID들을 로컬스토리지에서 관리
   const getCancelledAssignments = useCallback((): string[] => {
@@ -224,13 +225,25 @@ const AssignmentList: React.FC<AssignmentListProps> = ({
 
       if (!response.ok) {
         if (response.status === 400) {
+          // 400 에러 시 응답 본문 확인
+          const errorText = await response.text();
+          console.log("과제 조회 400 에러:", errorText);
+
           setAssignments([]);
           setError("아직 만들어진 과제가 없습니다.");
+          setLoading(false);
+          return;
+        } else if (response.status === 404) {
+          // 404 에러 처리 추가
+          setAssignments([]);
+          setError("과제를 찾을 수 없습니다.");
           setLoading(false);
           return;
         } else if (response.status === 401) {
           throw new Error("인증이 만료되었습니다.");
         } else {
+          const errorText = await response.text();
+          console.error("과제 조회 오류:", errorText);
           throw new Error(`서버 오류가 발생했습니다. (${response.status})`);
         }
       }
@@ -288,6 +301,33 @@ const AssignmentList: React.FC<AssignmentListProps> = ({
       loadAssignments();
     }
   }, [refreshTrigger, session, roomId, loadAssignments]);
+
+  // 과제 목록 로드 후 선택된 과제 업데이트
+  useEffect(() => {
+    if (isUpdatingRef.current) {
+      return;
+    }
+
+    if (selectedAssignment && assignments.length > 0) {
+      const updatedAssignment = assignments.find((a) => a.id === selectedAssignment.id);
+
+      if (updatedAssignment) {
+        // submissions 배열만 비교하여 변경 여부 확인
+        const submissionsChanged =
+          JSON.stringify(updatedAssignment.submissions) !== JSON.stringify(selectedAssignment.submissions);
+
+        if (submissionsChanged) {
+          console.log("과제 제출 현황 업데이트:", updatedAssignment.id);
+          isUpdatingRef.current = true;
+          onAssignmentSelect(updatedAssignment);
+          setTimeout(() => {
+            isUpdatingRef.current = false;
+          }, 100);
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignments]);
 
   const formatDateShort = (dateString: string): string => {
     const date = new Date(dateString);

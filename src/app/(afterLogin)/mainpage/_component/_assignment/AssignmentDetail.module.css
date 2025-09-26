@@ -21,6 +21,18 @@
   color: #f7f7f7;
 }
 
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.memberAvatar {
+  position: relative;
+  overflow: hidden;
+}
+
 .statusBadge {
   font-size: 11px;
   font-weight: 500;
