@@ -14,6 +14,8 @@ import CreateMission from "./createmission";
 import AssignmentRoom from "./assignmentroom";
 import ChatMessage from "./chatmessage";
 import PaymentModal from "./payment";
+import SpotlightCard from "@/app/_component/SpotlightCard";
+
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useChatMessages } from "@/hooks/useChatMessages";
 
@@ -67,7 +69,7 @@ interface ChatRoomProps {
     memberCount?: number;
     type?: "BASIC" | "STANDARD" | "ELITE" | "DEMO";
     role?: "LEADER" | "MEMBER";
-    roomImageUrl?: string; // 방 이미지 URL 추가
+    roomImageUrl?: string;
   };
   onRoomUpdate?: (roomId: string, unreadCount: number) => void;
 }
@@ -119,6 +121,7 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
   const [hoveredMessage, setHoveredMessage] = useState<number | null>(null);
   const [showPayment, setShowPayment] = useState<boolean>(true);
   const [isSuccessCompleted, setIsSuccessCompleted] = useState<boolean>(false);
+  const [showExitModal, setShowExitModal] = useState<boolean>(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -461,11 +464,13 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
     }
   };
 
-  // 티밍룸 나가기
-  const handleExit = async (): Promise<void> => {
-    const confirmExit = window.confirm("티밍룸에서 나가시겠습니까?");
-    if (!confirmExit) return;
+  // 티밍룸 나가기 버튼 클릭 (모달 표시)
+  const handleExit = (): void => {
+    setShowExitModal(true);
+  };
 
+  // 실제 나가기 처리
+  const handleConfirmExit = async (): Promise<void> => {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/rooms/${roomData.id}`, {
         method: "DELETE",
@@ -511,19 +516,27 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
           <div className={styles.chatHeader}>
             <div className={styles.chatRoomImg}>
               {roomData.roomImageUrl && roomData.roomImageUrl !== "/good_space1.jpg" ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={roomData.roomImageUrl}
                   alt={roomData.name}
+                  width={50}
+                  height={50}
                   className={styles.chatRoomImage}
+                  unoptimized
                   onError={(e) => {
                     const target = e.currentTarget;
                     target.src = "/good_space1.jpg";
                   }}
                 />
               ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src="/good_space1.jpg" alt="기본 프로필" className={styles.chatRoomImage} />
+                <Image
+                  src="/good_space1.jpg"
+                  alt="기본 프로필"
+                  width={50}
+                  height={50}
+                  className={styles.chatRoomImage}
+                  unoptimized
+                />
               )}
             </div>
             <p className={styles.chatRoomName}>{roomData.name}</p>
@@ -613,19 +626,27 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
           <div className={styles.chatRoomInfoHeader}>
             <div className={styles.chatRoomInfoImg}>
               {roomData.roomImageUrl && roomData.roomImageUrl !== "/good_space1.jpg" ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={roomData.roomImageUrl}
                   alt={roomData.name}
+                  width={60}
+                  height={60}
                   className={styles.chatRoomInfoImage}
+                  unoptimized
                   onError={(e) => {
                     const target = e.currentTarget;
                     target.src = "/good_space1.jpg";
                   }}
                 />
               ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src="/good_space1.jpg" alt="기본 프로필" className={styles.chatRoomInfoImage} />
+                <Image
+                  src="/good_space1.jpg"
+                  alt="기본 프로필"
+                  width={60}
+                  height={60}
+                  className={styles.chatRoomInfoImage}
+                  unoptimized
+                />
               )}
             </div>
             <div className={styles.chatRoomInfoName}>{roomData.name}</div>
@@ -772,6 +793,28 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
           roomId={Number(roomData.id)}
           members={actualMembers}
         />
+      )}
+
+      {/* 나가기 확인 모달 */}
+      {showExitModal && (
+        <div className={styles.exitModalOverlay} onClick={() => setShowExitModal(false)}>
+          <div onClick={(e) => e.stopPropagation()}>
+            <SpotlightCard className={styles.exitModalCard} spotlightColor="rgba(63, 63, 212, 0.3)">
+              <div className={styles.exitModalContent}>
+                <h2 className={styles.exitModalTitle}>고생하셨습니다!</h2>
+                <p className={styles.exitModalDescription}>환급은 팀플 성공 시점에서 진행되었습니다</p>
+                <div className={styles.exitModalButtons}>
+                  <button className={styles.exitModalConfirm} onClick={handleConfirmExit}>
+                    나가기
+                  </button>
+                  <button className={styles.exitModalCancel} onClick={() => setShowExitModal(false)}>
+                    취소
+                  </button>{" "}
+                </div>
+              </div>
+            </SpotlightCard>
+          </div>
+        </div>
       )}
     </>
   );
