@@ -11,6 +11,7 @@ interface UserInfoResponse {
   name: string;
   avatarKey: string;
   avatarVersion: number;
+  avatarUrl?: string; // 추가
 }
 
 interface AvatarIntentResponse {
@@ -49,7 +50,6 @@ export default function ProfileSection() {
   const [editNickname, setEditNickname] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [imageKey, setImageKey] = useState<number>(0); // Image 리렌더링용 key
 
   // 회원정보 조회 API 함수
   const fetchUserInfo = useCallback(async (): Promise<void> => {
@@ -92,37 +92,12 @@ export default function ProfileSection() {
       }
 
       const data: UserInfoResponse = await response.json();
+      console.log("사용자 정보 조회 성공:", data);
 
-      let avatarUrl = "/basicProfile.webp";
+      // avatarUrl이 응답에 포함되어 있으면 바로 사용
+      const avatarUrl = data.avatarUrl || "/basicProfile.webp";
 
-      if (data.avatarKey) {
-        try {
-          const avatarResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users/me/avatar/url`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              ownerType: "USER",
-            }),
-          });
-
-          if (avatarResponse.ok) {
-            const avatarData = await avatarResponse.json();
-            avatarUrl = avatarData.url || avatarData.avatarUrl || avatarUrl;
-            // 캐시 방지를 위해 timestamp 추가
-            if (avatarUrl && avatarUrl !== "/basicProfile.webp") {
-              avatarUrl = `${avatarUrl}?t=${Date.now()}`;
-            }
-            console.log("아바타 URL 조회 성공:", avatarUrl);
-          } else {
-            console.warn("아바타 URL 조회 실패, 기본 이미지 사용:", avatarResponse.status);
-          }
-        } catch (avatarError) {
-          console.warn("아바타 URL 조회 중 오류 발생, 기본 이미지 사용:", avatarError);
-        }
-      }
+      console.log("프로필 이미지 URL:", avatarUrl);
 
       setUserInfo((prev) => ({
         ...prev,
@@ -132,7 +107,6 @@ export default function ProfileSection() {
       }));
 
       setEditNickname(data.name);
-      setImageKey((prev) => prev + 1); // Image 컴포넌트 리렌더링
     } catch (err) {
       console.error("ProfileSection: 회원정보를 가져오는데 실패했습니다:", err);
       setError(err instanceof Error ? err.message : "회원정보를 불러올 수 없습니다");
@@ -230,7 +204,6 @@ export default function ProfileSection() {
     }
   };
 
-  // 이미지 크기 정보 추출 함수
   const getImageDimensions = (file: File): Promise<{ width: number; height: number }> => {
     return new Promise((resolve, reject) => {
       const img = new window.Image();
@@ -249,7 +222,6 @@ export default function ProfileSection() {
     });
   };
 
-  // 아바타 업로드 완료 API 호출 함수
   const completeAvatarUpload = async (
     intentData: AvatarIntentResponse,
     dimensions: { width: number; height: number }
@@ -296,35 +268,6 @@ export default function ProfileSection() {
 
       const completeData: AvatarCompleteResponse = await response.json();
       console.log("아바타 업로드 완료 응답:", completeData);
-      console.log("publicUrl:", completeData.publicUrl);
-
-      // 캐시 방지를 위해 timestamp 추가
-      const timestamp = Date.now();
-      const newImageUrl = completeData.publicUrl
-        ? `${completeData.publicUrl}?v=${timestamp}`
-        : `/basicProfile.webp?v=${timestamp}`;
-
-      console.log("새로운 이미지 URL (캐시 방지):", newImageUrl);
-
-      // 이미지 프리로드
-      const img = new window.Image();
-      img.onload = () => {
-        console.log("새 이미지 로드 완료");
-        setUserInfo((prev) => ({
-          ...prev,
-          profileImage: newImageUrl,
-        }));
-        setImageKey((prev) => prev + 1); // Image 컴포넌트 강제 리렌더링
-      };
-      img.onerror = () => {
-        console.error("이미지 로드 실패, 기본값으로 업데이트");
-        setUserInfo((prev) => ({
-          ...prev,
-          profileImage: newImageUrl,
-        }));
-        setImageKey((prev) => prev + 1); // Image 컴포넌트 강제 리렌더링
-      };
-      img.src = newImageUrl;
 
       return completeData;
     } catch (error) {
@@ -333,7 +276,6 @@ export default function ProfileSection() {
     }
   };
 
-  // 아바타 업로드 Intent API 호출
   const prepareAvatarUpload = async (file: File) => {
     try {
       const token = session?.accessToken;
@@ -405,7 +347,6 @@ export default function ProfileSection() {
     }
   };
 
-  // S3에 파일 업로드 함수
   const uploadToS3 = async (
     file: File,
     intentData: AvatarIntentResponse,
@@ -451,6 +392,9 @@ export default function ProfileSection() {
 
       await completeAvatarUpload(intentData, dimensions);
       alert("프로필 이미지가 성공적으로 업로드되었습니다!");
+
+      // 업로드 완료 후 사용자 정보 새로고침
+      await fetchUserInfo();
     } catch (error) {
       console.error("S3 업로드 에러:", error);
       alert(error instanceof Error ? error.message : "파일 업로드에 실패했습니다.");
@@ -496,14 +440,14 @@ export default function ProfileSection() {
           <div className={styles.avatarContainer}>
             <div className={styles.avatar}>
               <Image
-                key={imageKey}
                 src={userInfo.profileImage}
                 alt="프로필"
                 width={100}
                 height={100}
                 priority
-                unoptimized={userInfo.profileImage.includes("?v=") || userInfo.profileImage.includes("?t=")}
+                unoptimized
                 style={{ objectFit: "cover", borderRadius: "50%" }}
+                key={userInfo.profileImage}
               />
             </div>
             <label className={styles.avatarEdit} htmlFor="profile-upload">
