@@ -1,6 +1,6 @@
-/* eslint-disable @next/next/no-img-element */
 "use client";
 import styles from "./profilesection.module.css";
+import Image from "next/image";
 
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
@@ -49,6 +49,7 @@ export default function ProfileSection() {
   const [editNickname, setEditNickname] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [imageKey, setImageKey] = useState<number>(0); // Image 리렌더링용 key
 
   // 회원정보 조회 API 함수
   const fetchUserInfo = useCallback(async (): Promise<void> => {
@@ -99,13 +100,21 @@ export default function ProfileSection() {
           const avatarResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users/me/avatar/url`, {
             method: "POST",
             headers: {
+              "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
             },
+            body: JSON.stringify({
+              ownerType: "USER",
+            }),
           });
 
           if (avatarResponse.ok) {
             const avatarData = await avatarResponse.json();
             avatarUrl = avatarData.url || avatarData.avatarUrl || avatarUrl;
+            // 캐시 방지를 위해 timestamp 추가
+            if (avatarUrl && avatarUrl !== "/basicProfile.webp") {
+              avatarUrl = `${avatarUrl}?t=${Date.now()}`;
+            }
             console.log("아바타 URL 조회 성공:", avatarUrl);
           } else {
             console.warn("아바타 URL 조회 실패, 기본 이미지 사용:", avatarResponse.status);
@@ -123,6 +132,7 @@ export default function ProfileSection() {
       }));
 
       setEditNickname(data.name);
+      setImageKey((prev) => prev + 1); // Image 컴포넌트 리렌더링
     } catch (err) {
       console.error("ProfileSection: 회원정보를 가져오는데 실패했습니다:", err);
       setError(err instanceof Error ? err.message : "회원정보를 불러올 수 없습니다");
@@ -223,7 +233,7 @@ export default function ProfileSection() {
   // 이미지 크기 정보 추출 함수
   const getImageDimensions = (file: File): Promise<{ width: number; height: number }> => {
     return new Promise((resolve, reject) => {
-      const img = new Image();
+      const img = new window.Image();
       img.onload = () => {
         resolve({
           width: img.naturalWidth,
@@ -264,6 +274,7 @@ export default function ProfileSection() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
+          ownerType: "USER",
           key: intentData.key,
           width: dimensions.width,
           height: dimensions.height,
@@ -284,12 +295,36 @@ export default function ProfileSection() {
       }
 
       const completeData: AvatarCompleteResponse = await response.json();
-      console.log("아바타 업로드 완료:", completeData);
+      console.log("아바타 업로드 완료 응답:", completeData);
+      console.log("publicUrl:", completeData.publicUrl);
 
-      setUserInfo((prev) => ({
-        ...prev,
-        profileImage: completeData.publicUrl || prev.profileImage,
-      }));
+      // 캐시 방지를 위해 timestamp 추가
+      const timestamp = Date.now();
+      const newImageUrl = completeData.publicUrl
+        ? `${completeData.publicUrl}?v=${timestamp}`
+        : `/basicProfile.webp?v=${timestamp}`;
+
+      console.log("새로운 이미지 URL (캐시 방지):", newImageUrl);
+
+      // 이미지 프리로드
+      const img = new window.Image();
+      img.onload = () => {
+        console.log("새 이미지 로드 완료");
+        setUserInfo((prev) => ({
+          ...prev,
+          profileImage: newImageUrl,
+        }));
+        setImageKey((prev) => prev + 1); // Image 컴포넌트 강제 리렌더링
+      };
+      img.onerror = () => {
+        console.error("이미지 로드 실패, 기본값으로 업데이트");
+        setUserInfo((prev) => ({
+          ...prev,
+          profileImage: newImageUrl,
+        }));
+        setImageKey((prev) => prev + 1); // Image 컴포넌트 강제 리렌더링
+      };
+      img.src = newImageUrl;
 
       return completeData;
     } catch (error) {
@@ -298,7 +333,7 @@ export default function ProfileSection() {
     }
   };
 
-  // 아바타 업로드 Intent API 호출 (체크섬 없음)
+  // 아바타 업로드 Intent API 호출
   const prepareAvatarUpload = async (file: File) => {
     try {
       const token = session?.accessToken;
@@ -324,7 +359,7 @@ export default function ProfileSection() {
         throw new Error("파일 크기는 5MB 이하로 제한됩니다.");
       }
 
-      console.log("=== 아바타 업로드 준비 (체크섬 없음) ===");
+      console.log("=== 아바타 업로드 준비 ===");
       console.log("파일 정보:", {
         fileName: file.name,
         fileSize: file.size,
@@ -334,11 +369,10 @@ export default function ProfileSection() {
       const dimensions = await getImageDimensions(file);
       console.log("이미지 크기:", dimensions);
 
-      // Intent API 요청 (체크섬 없음)
       const requestBody = {
+        ownerType: "USER",
         contentType: file.type.toLowerCase(),
         byteSize: file.size,
-        // checksumSha256Base64 제거
       };
 
       console.log("Intent API 요청 데이터:", requestBody);
@@ -371,18 +405,17 @@ export default function ProfileSection() {
     }
   };
 
-  // S3에 파일 업로드 함수 (체크섬 없음)
+  // S3에 파일 업로드 함수
   const uploadToS3 = async (
     file: File,
     intentData: AvatarIntentResponse,
     dimensions: { width: number; height: number }
   ) => {
     try {
-      console.log("=== S3 업로드 시작 (체크섬 없음) ===");
+      console.log("=== S3 업로드 시작 ===");
       console.log("업로드 URL:", intentData.url);
       console.log("requiredHeaders:", intentData.requiredHeaders);
 
-      // requiredHeaders를 그대로 사용
       const headers: Record<string, string> = {};
       if (intentData.requiredHeaders) {
         Object.keys(intentData.requiredHeaders).forEach((key) => {
@@ -416,9 +449,8 @@ export default function ProfileSection() {
 
       console.log("S3 업로드 성공!");
 
-      const completeData = await completeAvatarUpload(intentData, dimensions);
+      await completeAvatarUpload(intentData, dimensions);
       alert("프로필 이미지가 성공적으로 업로드되었습니다!");
-      await fetchUserInfo();
     } catch (error) {
       console.error("S3 업로드 에러:", error);
       alert(error instanceof Error ? error.message : "파일 업로드에 실패했습니다.");
@@ -463,7 +495,16 @@ export default function ProfileSection() {
         <div className={styles.profileHeader}>
           <div className={styles.avatarContainer}>
             <div className={styles.avatar}>
-              <img src={userInfo.profileImage} alt="프로필" />
+              <Image
+                key={imageKey}
+                src={userInfo.profileImage}
+                alt="프로필"
+                width={100}
+                height={100}
+                priority
+                unoptimized={userInfo.profileImage.includes("?v=") || userInfo.profileImage.includes("?t=")}
+                style={{ objectFit: "cover", borderRadius: "50%" }}
+              />
             </div>
             <label className={styles.avatarEdit} htmlFor="profile-upload">
               📷
