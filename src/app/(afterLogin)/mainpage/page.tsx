@@ -10,6 +10,7 @@ import FindRoom from "./_component/findroom";
 import MyPage from "./_component/mypage";
 import ChatRoom from "./_component/chatroom";
 import Welcome from "./_component/welcome";
+
 // ✅ Room 타입 정의 추가
 interface Member {
   memberId: number;
@@ -28,6 +29,7 @@ interface Room {
   memberCount?: number;
   members?: Member[];
 }
+
 export default function MainPage(): JSX.Element {
   const [selectedMenu, setSelectedMenu] = useState<string | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<{ id: string; name: string; lastChat: string } | null>(null);
@@ -232,48 +234,6 @@ export default function MainPage(): JSX.Element {
       `}</style>
 
       <div className={styles.container}>
-        {/* 인증 상태 표시 */}
-        <div
-          style={{
-            position: "fixed",
-            top: 10,
-            right: 10,
-            background: session?.isBackendAuthenticated ? "#10b981" : "#f59e0b",
-            color: "white",
-            padding: "8px 12px",
-            borderRadius: "8px",
-            fontSize: "12px",
-            zIndex: 1000,
-            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-            minWidth: "220px",
-          }}
-        >
-          <div style={{ fontWeight: "bold", marginBottom: "4px" }}>인증 상태</div>
-          <div>NextAuth: ✅ {session?.provider}</div>
-          <div>Backend JWT: {session?.isBackendAuthenticated ? "✅ 연결됨" : "❌ 없음"}</div>
-          <div style={{ fontSize: "10px", marginTop: "4px", opacity: 0.8 }}>{session?.user?.name || "사용자"}님</div>
-
-          {/* 백엔드 토큰이 없을 때 재시도 버튼 */}
-          {!session?.isBackendAuthenticated && (
-            <button
-              onClick={retryBackendAuth}
-              style={{
-                background: "rgba(255,255,255,0.2)",
-                border: "1px solid rgba(255,255,255,0.3)",
-                color: "white",
-                padding: "4px 8px",
-                borderRadius: "4px",
-                fontSize: "10px",
-                cursor: "pointer",
-                marginTop: "6px",
-                width: "100%",
-              }}
-            >
-              백엔드 재연결 시도
-            </button>
-          )}
-        </div>
-
         <ActionBar
           onMenuSelect={handleMenuSelect}
           onRoomSelect={handleRoomSelect}
