@@ -159,16 +159,17 @@ export default function ActionBar({
         // API에서 받은 avatarUrl을 그대로 사용
         const membersWithAvatarUrl = room.members.map((member) => ({
           ...member,
-          // API에서 이미 제공된 avatarUrl을 그대로 유지
           avatarUrl: member.avatarUrl || "",
         }));
 
         console.log("ActionBar - 변환된 멤버:", membersWithAvatarUrl);
 
-        // 방 이미지 URL 생성 (avatarUrl이 없으면 기본 이미지)
-        const roomImageUrl = room.avatarUrl
-          ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/files/${room.imageKey}?v=${room.imageVersion}`
-          : "/good_space1.jpg";
+        // ✅ 방 이미지 URL - avatarUrl이 있으면 그대로 사용, 없으면 기본 이미지
+        const roomImageUrl = room.avatarUrl || "/good_space1.jpg";
+
+        console.log("ActionBar - 방 데이터:", room);
+        console.log("ActionBar - avatarUrl:", room.avatarUrl);
+        console.log("ActionBar - 최종 roomImageUrl:", roomImageUrl);
 
         return {
           id: room.roomId?.toString() || "0",
@@ -179,7 +180,7 @@ export default function ActionBar({
           members: membersWithAvatarUrl,
           type: room.type || "BASIC",
           role: room.role || "MEMBER",
-          roomImageUrl: roomImageUrl, // 방 이미지 URL 추가
+          roomImageUrl: roomImageUrl,
         };
       });
 
@@ -353,7 +354,7 @@ export default function ActionBar({
                     className={styles.roomImage}
                     onError={(e) => {
                       const target = e.currentTarget;
-                      target.src = "/good_space1.jpgp";
+                      target.src = "/good_space1.jpg";
                     }}
                   />
                 ) : (
