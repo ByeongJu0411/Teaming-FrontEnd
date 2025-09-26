@@ -414,7 +414,6 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
           console.log("방 이미지 업로드 완료!");
         } catch (imageError) {
           console.error("방 이미지 업로드 실패:", imageError);
-          // 이미지 업로드 실패해도 방 생성은 성공이므로 계속 진행
           alert("방은 생성되었으나 이미지 업로드에 실패했습니다.");
         }
       }
@@ -434,6 +433,7 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
       setIsLoading(false);
     }
   };
+
   return (
     <div className={styles.createRoom}>
       <p className={styles.titleUpdated}>티밍룸 생성</p>

@@ -204,7 +204,7 @@ export default function ChatMessage({
                       <FiImage size={20} />
                     </div>
                     <div className={styles.fileInfo}>
-                      <span className={styles.fileName}>{message.content}</span>
+                      <span className={styles.fileName}>{message.attachments?.[0]?.name || message.content}</span>
                       <span className={styles.fileType}>이미지</span>
                     </div>
                   </div>
@@ -224,7 +224,7 @@ export default function ChatMessage({
                       <FcDocument size={20} />
                     </div>
                     <div className={styles.fileInfo}>
-                      <span className={styles.fileName}>{message.content}</span>
+                      <span className={styles.fileName}>{message.attachments?.[0]?.name || message.content}</span>
                       <span className={styles.fileType}>문서</span>
                     </div>
                   </div>
@@ -244,7 +244,7 @@ export default function ChatMessage({
                       <span>🎥</span>
                     </div>
                     <div className={styles.fileInfo}>
-                      <span className={styles.fileName}>{message.content}</span>
+                      <span className={styles.fileName}>{message.attachments?.[0]?.name || message.content}</span>
                       <span className={styles.fileType}>비디오</span>
                     </div>
                   </div>
@@ -264,7 +264,7 @@ export default function ChatMessage({
                       <span>🎵</span>
                     </div>
                     <div className={styles.fileInfo}>
-                      <span className={styles.fileName}>{message.content}</span>
+                      <span className={styles.fileName}>{message.attachments?.[0]?.name || message.content}</span>
                       <span className={styles.fileType}>오디오</span>
                     </div>
                   </div>
