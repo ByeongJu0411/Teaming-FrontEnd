@@ -95,6 +95,7 @@ interface ChatMessageType {
   timestamp: string;
   messageType: "TEXT" | "IMAGE" | "FILE" | "VIDEO" | "AUDIO" | "SYSTEM" | "SYSTEM_NOTICE";
   readBy: number[];
+  attachments?: MessageAttachment[];
 }
 
 // 기본 아바타 생성 함수 (fallback용)
@@ -144,6 +145,7 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
       timestamp: wsMsg.createdAt,
       messageType: wsMsg.type,
       readBy: [wsMsg.sender.id || 0],
+      attachments: wsMsg.attachments || [],
     };
   }, []);
 

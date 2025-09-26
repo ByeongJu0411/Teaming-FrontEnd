@@ -121,26 +121,100 @@
   font-weight: 400;
 }
 
-/* ===== 파일 메시지 스타일 ===== */
+/* ===== 파일 메시지 스타일 (개선) ===== */
 .fileMessageWrapper {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.fileMessageContainer {
+  display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 4px;
+  gap: 12px;
+  padding: 8px;
+  min-width: 180px;
+}
+
+.fileIcon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.myBubble .fileIcon {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.otherBubble .fileIcon {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.fileInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  overflow: hidden;
 }
 
 .fileName {
   font-size: 14px;
+  font-weight: 500;
   word-break: break-word;
   line-height: 1.4;
 }
 
-.myBubble .fileName {
+.fileType {
+  font-size: 11px;
+  opacity: 0.7;
+  font-weight: 400;
+}
+
+.myBubble .fileName,
+.myBubble .fileType {
   color: white;
 }
 
-.otherBubble .fileName {
+.otherBubble .fileName,
+.otherBubble .fileType {
   color: white;
+}
+
+/* 다운로드 버튼 */
+.downloadButton {
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+.myBubble .downloadButton {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.myBubble .downloadButton:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.otherBubble .downloadButton {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.otherBubble .downloadButton:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* ===== 이미지 메시지 스타일 ===== */

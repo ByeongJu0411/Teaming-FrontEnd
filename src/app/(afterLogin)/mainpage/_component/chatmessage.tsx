@@ -2,6 +2,7 @@ import React from "react";
 import Image from "next/image";
 import { FcDocument } from "react-icons/fc";
 import { FiImage } from "react-icons/fi";
+import { useSession } from "next-auth/react";
 import styles from "./chatmessage.module.css";
 
 interface ChatMessage {
@@ -41,8 +42,64 @@ export default function ChatMessage({
   hoveredMessage,
   setHoveredMessage,
 }: ChatMessageProps) {
+  const { data: session } = useSession();
   const isMyMessage = message.senderId === currentUserId;
   const isSystemMessage = message.messageType === "SYSTEM" || message.messageType === "SYSTEM_NOTICE";
+
+  // 파일 다운로드 핸들러
+  const handleDownload = async (fileId: number | undefined) => {
+    if (!fileId) {
+      console.error("fileId가 없습니다:", message);
+      alert("파일 ID를 찾을 수 없습니다.");
+      return;
+    }
+
+    if (!session?.accessToken) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
+
+    try {
+      const token = session.accessToken;
+
+      console.log("다운로드 요청 - fileId:", fileId);
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080"}/files/download-url/${fileId}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log("다운로드 API 응답:", response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("다운로드 API 오류:", errorText);
+        throw new Error("다운로드 URL 생성 실패");
+      }
+
+      const data = await response.json();
+      console.log("다운로드 URL 데이터:", data);
+
+      // Presigned URL로 파일 다운로드
+      if (data.url) {
+        const link = document.createElement("a");
+        link.href = data.url;
+        link.download = message.content; // 파일명
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (error) {
+      console.error("파일 다운로드 오류:", error);
+      alert("파일 다운로드에 실패했습니다.");
+    }
+  };
 
   // 안 읽은 사용자 계산 함수
   const getUnreadUsers = (message: ChatMessage) => {
@@ -100,29 +157,81 @@ export default function ChatMessage({
 
               {message.messageType === "IMAGE" && (
                 <div className={styles.fileMessageWrapper}>
-                  <FiImage size={24} />
-                  <span className={styles.fileName}>{message.content}</span>
+                  <div className={styles.fileMessageContainer}>
+                    <div className={styles.fileIcon}>
+                      <FiImage size={20} />
+                    </div>
+                    <div className={styles.fileInfo}>
+                      <span className={styles.fileName}>{message.content}</span>
+                      <span className={styles.fileType}>이미지</span>
+                    </div>
+                  </div>
+                  <button
+                    className={styles.downloadButton}
+                    onClick={() => handleDownload(message.attachments?.[0]?.fileId)}
+                  >
+                    다운로드
+                  </button>
                 </div>
               )}
 
               {message.messageType === "FILE" && (
                 <div className={styles.fileMessageWrapper}>
-                  <FcDocument size={24} />
-                  <span className={styles.fileName}>{message.content}</span>
+                  <div className={styles.fileMessageContainer}>
+                    <div className={styles.fileIcon}>
+                      <FcDocument size={20} />
+                    </div>
+                    <div className={styles.fileInfo}>
+                      <span className={styles.fileName}>{message.content}</span>
+                      <span className={styles.fileType}>문서</span>
+                    </div>
+                  </div>
+                  <button
+                    className={styles.downloadButton}
+                    onClick={() => handleDownload(message.attachments?.[0]?.fileId)}
+                  >
+                    다운로드
+                  </button>
                 </div>
               )}
 
               {message.messageType === "VIDEO" && (
                 <div className={styles.fileMessageWrapper}>
-                  <span>🎥</span>
-                  <span className={styles.fileName}>{message.content}</span>
+                  <div className={styles.fileMessageContainer}>
+                    <div className={styles.fileIcon}>
+                      <span>🎥</span>
+                    </div>
+                    <div className={styles.fileInfo}>
+                      <span className={styles.fileName}>{message.content}</span>
+                      <span className={styles.fileType}>비디오</span>
+                    </div>
+                  </div>
+                  <button
+                    className={styles.downloadButton}
+                    onClick={() => handleDownload(message.attachments?.[0]?.fileId)}
+                  >
+                    다운로드
+                  </button>
                 </div>
               )}
 
               {message.messageType === "AUDIO" && (
                 <div className={styles.fileMessageWrapper}>
-                  <span>🎵</span>
-                  <span className={styles.fileName}>{message.content}</span>
+                  <div className={styles.fileMessageContainer}>
+                    <div className={styles.fileIcon}>
+                      <span>🎵</span>
+                    </div>
+                    <div className={styles.fileInfo}>
+                      <span className={styles.fileName}>{message.content}</span>
+                      <span className={styles.fileType}>오디오</span>
+                    </div>
+                  </div>
+                  <button
+                    className={styles.downloadButton}
+                    onClick={() => handleDownload(message.attachments?.[0]?.fileId)}
+                  >
+                    다운로드
+                  </button>
                 </div>
               )}
             </div>
