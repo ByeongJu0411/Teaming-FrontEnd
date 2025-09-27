@@ -61,7 +61,7 @@ interface CreateRoomProps {
 }
 
 // 모달 컴포넌트
-const InviteLinkModal = ({ isOpen, onClose, inviteCode, roomTitle }: InviteLinkModalProps) => {
+const InviteLinkModal = ({ isOpen, onClose, inviteCode }: InviteLinkModalProps) => {
   if (!isOpen) return null;
 
   const inviteLink = `${window.location.origin}/invite/${inviteCode}`;
@@ -69,38 +69,10 @@ const InviteLinkModal = ({ isOpen, onClose, inviteCode, roomTitle }: InviteLinkM
   const copyToClipboard = async (): Promise<void> => {
     try {
       await navigator.clipboard.writeText(inviteLink);
-      alert("초대 링크가 복사되었습니다!");
+      alert("초대 코드가 복사되었습니다!");
     } catch (err) {
       console.error("복사 실패:", err);
       alert("복사에 실패했습니다.");
-    }
-  };
-
-  const shareViaKakao = (): void => {
-    if (typeof window !== "undefined" && window.Kakao) {
-      window.Kakao.Share.sendDefault({
-        objectType: "text",
-        text: `${roomTitle}에 초대되었습니다!\n초대 링크: ${inviteLink}`,
-        link: {
-          webUrl: inviteLink,
-          mobileWebUrl: inviteLink,
-        },
-      });
-    } else {
-      if (navigator.share) {
-        navigator
-          .share({
-            title: `${roomTitle} 초대`,
-            text: `${roomTitle}에 초대되었습니다!`,
-            url: inviteLink,
-          })
-          .catch((err) => {
-            console.error("공유 실패:", err);
-            copyToClipboard();
-          });
-      } else {
-        copyToClipboard();
-      }
     }
   };
 
@@ -115,24 +87,20 @@ const InviteLinkModal = ({ isOpen, onClose, inviteCode, roomTitle }: InviteLinkM
         </div>
 
         <div className={styles.inviteLinkSection}>
-          <h3 className={styles.inviteLinkTitle}>초대 링크</h3>
-          <div className={styles.inviteLinkBox}>{inviteLink}</div>
+          <h3 className={styles.inviteLinkTitle}>초대 코드</h3>
           <div className={styles.inviteCodeInfo}>
-            초대 코드: <span className={styles.inviteCodeHighlight}>{inviteCode}</span>
+            <span className={styles.inviteCodeHighlight}>{inviteCode}</span>
           </div>
         </div>
 
         <div className={styles.modalButtonGroup}>
           <button onClick={copyToClipboard} className={styles.modalButton} type="button">
-            링크 복사
-          </button>
-          <button onClick={shareViaKakao} className={`${styles.modalButton} ${styles.kakaoButton}`} type="button">
-            카카오톡 공유
+            초대 코드 복사
           </button>
         </div>
 
         <div className={styles.modalNotice}>
-          <p className={styles.modalNoticeText}>팀원들에게 이 링크를 공유하여 티밍룸에 초대해보세요!</p>
+          <p className={styles.modalNoticeText}>팀원들에게 초대코드를 공유하여 티밍룸에 초대해보세요!</p>
         </div>
       </div>
     </div>
@@ -226,6 +194,25 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
     setInviteCode("");
   };
 
+  // 이미지 크기 가져오기 함수
+  const getImageDimensions = (file: File): Promise<{ width: number; height: number }> => {
+    return new Promise((resolve, reject) => {
+      const img = new window.Image();
+      img.onload = () => {
+        resolve({
+          width: img.naturalWidth,
+          height: img.naturalHeight,
+        });
+        URL.revokeObjectURL(img.src);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(img.src);
+        reject(new Error("이미지를 로드할 수 없습니다."));
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   // 이미지 업로드 함수 (Intent → S3 → Complete)
   const uploadRoomImage = async (roomId: number): Promise<void> => {
     if (!profileImage || !session?.accessToken) {
@@ -243,14 +230,21 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
         type: profileImage.type,
       });
 
-      // 1. Intent API 요청
+      // 이미지 크기 가져오기
+      const dimensions = await getImageDimensions(profileImage);
+      console.log("이미지 크기:", dimensions);
+
+      // 1. Intent API 요청 (ownerType: "ROOM", roomId 추가)
       const requestBody = {
-        fileName: profileImage.name,
         contentType: profileImage.type,
-        size: profileImage.size,
+        byteSize: profileImage.size,
+        ownerType: "ROOM",
+        roomId: roomId,
       };
 
-      const intentResponse = await fetch(`${backendUrl}/files/intent/${roomId}`, {
+      console.log("Intent API 요청 데이터:", requestBody);
+
+      const intentResponse = await fetch(`${backendUrl}/users/me/avatar/intent`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -270,13 +264,24 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
       const intentData = await intentResponse.json();
       console.log("Intent 성공:", intentData);
 
-      // 2. S3에 파일 업로드
+      // 2. S3에 파일 업로드 (체크섬 없이)
       console.log("=== S3 업로드 시작 ===");
+
+      const headers: Record<string, string> = {
+        "Content-Type": profileImage.type,
+      };
+
+      if (intentData.requiredHeaders) {
+        Object.keys(intentData.requiredHeaders).forEach((key) => {
+          headers[key] = intentData.requiredHeaders[key];
+        });
+      }
+
+      console.log("최종 업로드 헤더:", headers);
+
       const s3UploadResponse = await fetch(intentData.url, {
         method: "PUT",
-        headers: {
-          "Content-Type": profileImage.type,
-        },
+        headers: headers,
         body: profileImage,
       });
 
@@ -292,15 +297,24 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
 
       // 3. Complete API 호출
       console.log("=== 이미지 업로드 확정 시작 ===");
-      const completeResponse = await fetch(`${backendUrl}/files/complete/${roomId}`, {
+
+      const completeBody = {
+        key: intentData.key,
+        width: dimensions.width,
+        height: dimensions.height,
+        ownerType: "ROOM",
+        roomId: roomId,
+      };
+
+      console.log("Complete API 요청 데이터:", completeBody);
+
+      const completeResponse = await fetch(`${backendUrl}/users/me/avatar/complete`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          key: intentData.key,
-        }),
+        body: JSON.stringify(completeBody),
       });
 
       console.log("Complete API 응답 상태:", completeResponse.status);

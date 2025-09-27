@@ -1,21 +1,13 @@
 "use client";
 
 import { JSX, useState, useEffect, useCallback } from "react";
+import { Room, Member } from "@/types/room";
 import { useSession } from "next-auth/react";
 import { Client, IMessage } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import styles from "./actionbar.module.css";
 
 // API 응답 타입 정의
-interface Member {
-  memberId: number;
-  lastReadMessageId: number;
-  name: string;
-  avatarKey?: string;
-  avatarVersion?: number;
-  avatarUrl: string;
-  roomRole: "LEADER" | string;
-}
 
 interface LastMessage {
   id: number;
@@ -43,18 +35,6 @@ interface RoomData {
   success: boolean;
   members: Member[];
   avatarUrl: string;
-}
-
-interface Room {
-  id: string;
-  name: string;
-  lastChat: string;
-  unreadCount?: number;
-  memberCount?: number;
-  members?: Member[];
-  type?: "BASIC" | "STANDARD" | "ELITE" | "DEMO";
-  role?: "LEADER" | "MEMBER";
-  roomImageUrl?: string;
 }
 
 // 사용자 정보 API 응답 타입
