@@ -202,7 +202,9 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
 
   // 멤버 데이터 처리
   const actualMembers: Member[] = roomData.members || [];
-  const memberCount: number = actualMembers.length || roomData.memberCount || 0;
+
+  // 방 생성 시 설정한 목표 인원수 (결제 계산에 사용)
+  const targetMemberCount: number = roomData.memberCount || actualMembers.length || 0;
 
   // 멤버 정보를 ChatMessage에서 사용할 수 있는 형태로 변환
   const chatUsers: ChatUser[] = actualMembers.map((member: Member) => {
@@ -551,8 +553,9 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
               <PaymentModal
                 setModal={() => setShowPayment(false)}
                 roomType={getRoomTypeInfo()}
-                memberCount={memberCount}
+                memberCount={targetMemberCount}
                 onPaymentComplete={handlePaymentComplete}
+                roomId={roomData.id}
               />
             ) : (
               <>
@@ -653,7 +656,7 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
           </div>
 
           <div className={styles.chatUserList}>
-            <div className={styles.userListTitle}>참여자 ({memberCount})</div>
+            <div className={styles.userListTitle}>참여자 ({actualMembers.length})</div>
             {actualMembers.length > 0 ? (
               actualMembers.map((member: Member) => {
                 const avatarUrl = member.avatarUrl || "";
@@ -809,7 +812,7 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
                   </button>
                   <button className={styles.exitModalCancel} onClick={() => setShowExitModal(false)}>
                     취소
-                  </button>{" "}
+                  </button>
                 </div>
               </div>
             </SpotlightCard>

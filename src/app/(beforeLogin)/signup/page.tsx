@@ -35,13 +35,12 @@ export default function SignupPage() {
     console.log("회원가입 완료!");
   };
 
-  // 회원가입 데이터 준비
+  // 회원가입 데이터 준비 - avatarFile 포함
   const signupData = {
     email,
     password,
     name: nickname,
-    avatarKey: profileImage ? `profile_${Date.now()}` : undefined,
-    avatarVersion: profileImage ? 1 : undefined,
+    avatarFile: profileImage || undefined, // ⭐ File 객체 전달
   };
 
   // 유효성 검사 함수들

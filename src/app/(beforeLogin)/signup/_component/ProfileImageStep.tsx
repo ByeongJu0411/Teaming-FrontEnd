@@ -14,10 +14,23 @@ export default function ProfileImageStep({
   previewUrl,
   setPreviewUrl,
 }: ProfileImageStepProps) {
-  // 프로필 이미지 선택
+  // 프로필 이미지 선택 (업로드 X, 파일만 저장)
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // 파일 크기 검증
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        alert("파일 크기는 5MB 이하로 제한됩니다.");
+        return;
+      }
+
+      // 이미지 타입 검증
+      if (!file.type.startsWith("image/")) {
+        alert("이미지 파일만 업로드 가능합니다.");
+        return;
+      }
+
       setProfileImage(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -31,7 +44,6 @@ export default function ProfileImageStep({
   const handleRemoveImage = () => {
     setProfileImage(null);
     setPreviewUrl("");
-    // 파일 input 리셋
     const fileInput = document.getElementById("profile-image-input") as HTMLInputElement;
     if (fileInput) {
       fileInput.value = "";
