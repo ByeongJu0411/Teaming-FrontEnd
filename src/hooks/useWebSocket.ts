@@ -2,8 +2,6 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Client, IMessage } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 
-// 명세서 기반 정확한 타입 정의
-
 interface RoomSuccessEvent {
   roomId: number;
 }
@@ -102,14 +100,35 @@ export const useWebSocket = ({
   const [isConnecting, setIsConnecting] = useState(false);
   const clientRef = useRef<Client | null>(null);
 
+  // 콜백들을 ref로 저장하여 의존성 문제 해결
+  const callbacksRef = useRef({
+    onMessageReceived,
+    onReadBoundaryUpdate,
+    onRoomEvent,
+    onMemberEntered,
+    onRoomSuccess,
+    onError,
+  });
+
+  // 콜백이 변경될 때마다 ref 업데이트
+  useEffect(() => {
+    callbacksRef.current = {
+      onMessageReceived,
+      onReadBoundaryUpdate,
+      onRoomEvent,
+      onMemberEntered,
+      onRoomSuccess,
+      onError,
+    };
+  }, [onMessageReceived, onReadBoundaryUpdate, onRoomEvent, onMemberEntered, onRoomSuccess, onError]);
+
   const connect = useCallback(() => {
     if (clientRef.current?.connected) return;
 
     setIsConnecting(true);
 
-    const wsUrl = `${
-      process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080"
-    }/ws-sockjs?token=${encodeURIComponent(token)}`;
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080";
+    const wsUrl = `${backendUrl}/ws-sockjs?token=${encodeURIComponent(token)}`;
 
     console.log("WebSocket 연결 시도:", wsUrl);
 
@@ -118,10 +137,7 @@ export const useWebSocket = ({
       connectHeaders: {
         Authorization: `Bearer ${token}`,
       },
-      debug: (str) => {
-        console.log("STOMP Debug:", str);
-      },
-      reconnectDelay: 5000,
+      reconnectDelay: 0,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
     });
@@ -136,7 +152,7 @@ export const useWebSocket = ({
         try {
           const chatMessage: ChatMessage = JSON.parse(message.body);
           console.log("메시지 수신:", chatMessage);
-          onMessageReceived(chatMessage);
+          callbacksRef.current.onMessageReceived(chatMessage);
         } catch (error) {
           console.error("메시지 파싱 오류:", error);
         }
@@ -147,8 +163,8 @@ export const useWebSocket = ({
         try {
           const update: ReadBoundaryUpdate = JSON.parse(message.body);
           console.log("읽음 경계 업데이트:", update);
-          if (onReadBoundaryUpdate) {
-            onReadBoundaryUpdate(update);
+          if (callbacksRef.current.onReadBoundaryUpdate) {
+            callbacksRef.current.onReadBoundaryUpdate(update);
           }
         } catch (error) {
           console.error("읽음 업데이트 파싱 오류:", error);
@@ -160,21 +176,21 @@ export const useWebSocket = ({
         try {
           const event: MemberEnteredEvent = JSON.parse(message.body);
           console.log("멤버 입장 이벤트:", event);
-          if (onMemberEntered) {
-            onMemberEntered(event);
+          if (callbacksRef.current.onMemberEntered) {
+            callbacksRef.current.onMemberEntered(event);
           }
         } catch (error) {
           console.error("멤버 입장 이벤트 파싱 오류:", error);
         }
       });
 
-      // 4. 팀플 성공, 이벤트 구독
+      // 4. 팀플 성공 이벤트 구독
       client.subscribe(`/topic/rooms/${roomId}/success`, (message: IMessage) => {
         try {
           const event: RoomSuccessEvent = JSON.parse(message.body);
           console.log("팀플 성공 이벤트:", event);
-          if (onRoomSuccess) {
-            onRoomSuccess(event);
+          if (callbacksRef.current.onRoomSuccess) {
+            callbacksRef.current.onRoomSuccess(event);
           }
         } catch (error) {
           console.error("팀플 성공 이벤트 파싱 오류:", error);
@@ -186,23 +202,23 @@ export const useWebSocket = ({
         console.error("WebSocket Error:", message.body);
         try {
           const errorData = JSON.parse(message.body);
-          if (onError) {
-            onError(errorData.message || "알 수 없는 오류");
+          if (callbacksRef.current.onError) {
+            callbacksRef.current.onError(errorData.message || "알 수 없는 오류");
           }
         } catch {
-          if (onError) {
-            onError(message.body);
+          if (callbacksRef.current.onError) {
+            callbacksRef.current.onError(message.body);
           }
         }
       });
 
-      // 6. 개인 방 이벤트 구독 (unread 등)
+      // 6. 개인 방 이벤트 구독
       client.subscribe("/user/queue/room-events", (message: IMessage) => {
         try {
           const event: UserRoomEvent = JSON.parse(message.body);
           console.log("방 이벤트:", event);
-          if (onRoomEvent) {
-            onRoomEvent(event);
+          if (callbacksRef.current.onRoomEvent) {
+            callbacksRef.current.onRoomEvent(event);
           }
         } catch (error) {
           console.error("방 이벤트 파싱 오류:", error);
@@ -214,20 +230,37 @@ export const useWebSocket = ({
       console.error("STOMP Error:", frame.headers["message"]);
       setIsConnected(false);
       setIsConnecting(false);
-      if (onError) {
-        onError(frame.headers["message"] || "Connection error");
+
+      if (callbacksRef.current.onError) {
+        callbacksRef.current.onError("서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.");
       }
+
+      // 자동 재연결 중단
+      client.deactivate();
     };
 
-    client.onWebSocketClose = () => {
+    client.onWebSocketClose = (event) => {
       console.log("WebSocket Disconnected");
+      if (event) {
+        console.log("종료 코드:", event.code);
+        console.log("종료 이유:", event.reason);
+      }
       setIsConnected(false);
       setIsConnecting(false);
     };
 
-    client.activate();
-    clientRef.current = client;
-  }, [token, roomId, onMessageReceived, onReadBoundaryUpdate, onMemberEntered, onRoomSuccess, onError, onRoomEvent]);
+    client.onWebSocketError = (error) => {
+      console.error("WebSocket Error:", error);
+    };
+
+    try {
+      client.activate();
+      clientRef.current = client;
+    } catch (error) {
+      console.error("WebSocket 활성화 실패:", error);
+      setIsConnecting(false);
+    }
+  }, [token, roomId]);
 
   const disconnect = useCallback(() => {
     if (clientRef.current) {
@@ -274,6 +307,7 @@ export const useWebSocket = ({
     },
     [roomId]
   );
+
   useEffect(() => {
     if (token && roomId) {
       connect();
@@ -282,7 +316,8 @@ export const useWebSocket = ({
     return () => {
       disconnect();
     };
-  }, [token, roomId, connect, disconnect]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, roomId]);
 
   return {
     isConnected,
