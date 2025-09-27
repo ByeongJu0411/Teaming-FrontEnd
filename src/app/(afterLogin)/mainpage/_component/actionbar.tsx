@@ -13,7 +13,7 @@ interface Member {
   name: string;
   avatarKey?: string;
   avatarVersion?: number;
-  avatarUrl: string; // API에서 직접 제공
+  avatarUrl: string;
   roomRole: "LEADER" | string;
 }
 
@@ -54,7 +54,16 @@ interface Room {
   members?: Member[];
   type?: "BASIC" | "STANDARD" | "ELITE" | "DEMO";
   role?: "LEADER" | "MEMBER";
-  roomImageUrl?: string; // 방 이미지 URL 추가
+  roomImageUrl?: string;
+}
+
+// 사용자 정보 API 응답 타입
+interface UserInfoResponse {
+  email: string;
+  name: string;
+  avatarKey: string;
+  avatarVersion: number;
+  avatarUrl?: string;
 }
 
 interface ActionBarProps {
@@ -69,7 +78,6 @@ interface ActionBarProps {
   };
 }
 
-// WebSocket 이벤트 타입 정의
 interface UserRoomEvent {
   roomId: number;
   unreadCount: number;
@@ -99,7 +107,78 @@ export default function ActionBar({
   const [hasInitialLoad, setHasInitialLoad] = useState<boolean>(false);
   const { data: session } = useSession();
 
+  // 자체 로그인 사용자 정보 상태 추가
+  const [credentialsUserInfo, setCredentialsUserInfo] = useState<{
+    name: string;
+    image: string;
+  } | null>(null);
+
   const navItems: string[] = ["티밍룸 생성", "티밍룸 찾기", "마이페이지"];
+
+  // 자체 로그인 사용자 정보 조회
+  const fetchCredentialsUserInfo = useCallback(async (): Promise<void> => {
+    if (!session?.accessToken || !session?.isBackendAuthenticated) {
+      return;
+    }
+
+    // 소셜 로그인이면 조회 안 함
+    if (session.provider && session.provider !== "credentials") {
+      return;
+    }
+
+    try {
+      console.log("ActionBar: 자체 로그인 사용자 정보 조회 시작");
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080"}/users/me`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${session.accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        console.error("ActionBar: 사용자 정보 조회 실패:", response.status);
+        return;
+      }
+
+      const data: UserInfoResponse = await response.json();
+      console.log("ActionBar: 사용자 정보 조회 성공:", data);
+
+      setCredentialsUserInfo({
+        name: data.name,
+        image: data.avatarUrl || "/basicProfile.webp",
+      });
+    } catch (err) {
+      console.error("ActionBar: 사용자 정보 조회 오류:", err);
+    }
+  }, [session?.accessToken, session?.isBackendAuthenticated, session?.provider]);
+
+  // 세션이 변경될 때 사용자 정보 조회
+  useEffect(() => {
+    if (session && session.provider === "credentials") {
+      fetchCredentialsUserInfo();
+    }
+  }, [session, fetchCredentialsUserInfo]);
+
+  // 사용자 정보 업데이트 이벤트 리스너 추가
+  useEffect(() => {
+    const handleUserInfoUpdate = () => {
+      console.log("ActionBar: 사용자 정보 업데이트 이벤트 감지, 사용자 정보 새로고침");
+      if (session?.provider === "credentials") {
+        fetchCredentialsUserInfo();
+      }
+    };
+
+    // 이벤트 리스너 등록 (아바타 업데이트 & 이름 업데이트)
+    window.addEventListener("userAvatarUpdated", handleUserInfoUpdate);
+    window.addEventListener("userNameUpdated", handleUserInfoUpdate);
+
+    // 클린업 함수
+    return () => {
+      window.removeEventListener("userAvatarUpdated", handleUserInfoUpdate);
+      window.removeEventListener("userNameUpdated", handleUserInfoUpdate);
+    };
+  }, [session?.provider, fetchCredentialsUserInfo]);
 
   const fetchRooms = useCallback(async (): Promise<void> => {
     if (!session?.accessToken || !session?.isBackendAuthenticated) {
@@ -156,20 +235,12 @@ export default function ActionBar({
       }
 
       const convertedRooms: Room[] = data.map((room) => {
-        // API에서 받은 avatarUrl을 그대로 사용
         const membersWithAvatarUrl = room.members.map((member) => ({
           ...member,
           avatarUrl: member.avatarUrl || "",
         }));
 
-        console.log("ActionBar - 변환된 멤버:", membersWithAvatarUrl);
-
-        // ✅ 방 이미지 URL - avatarUrl이 있으면 그대로 사용, 없으면 기본 이미지
         const roomImageUrl = room.avatarUrl || "/good_space1.jpg";
-
-        console.log("ActionBar - 방 데이터:", room);
-        console.log("ActionBar - avatarUrl:", room.avatarUrl);
-        console.log("ActionBar - 최종 roomImageUrl:", roomImageUrl);
 
         return {
           id: room.roomId?.toString() || "0",
@@ -220,13 +291,11 @@ export default function ActionBar({
     client.onConnect = () => {
       console.log("ActionBar: WebSocket Connected");
 
-      // 개인 방 이벤트 구독 (lastMessage 업데이트)
       client.subscribe("/user/queue/room-events", (message: IMessage) => {
         try {
           const event: UserRoomEvent = JSON.parse(message.body);
           console.log("ActionBar: 방 이벤트 수신:", event);
 
-          // 방 목록에서 해당 방의 lastChat 업데이트
           setRooms((prevRooms) =>
             prevRooms.map((room) => {
               if (room.id === event.roomId.toString()) {
@@ -287,8 +356,11 @@ export default function ActionBar({
     onMenuSelect("");
   };
 
-  const userImage = session?.user?.image;
-  const userName = session?.user?.name || "사용자";
+  // 사용자 이미지와 이름 결정 로직
+  const userImage = session?.provider === "credentials" ? credentialsUserInfo?.image : session?.user?.image;
+
+  const userName =
+    session?.provider === "credentials" ? credentialsUserInfo?.name || "사용자" : session?.user?.name || "사용자";
 
   return (
     <div className={styles.actionBar}>

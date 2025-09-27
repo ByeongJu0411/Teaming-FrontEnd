@@ -125,8 +125,9 @@ const handler = NextAuth({
           return null;
         }
 
+        // 회원가입 후 자동 로그인: 토큰이 이미 있는 경우
         if (credentials.accessToken && credentials.refreshToken) {
-          console.log("백엔드에서 받은 토큰 사용");
+          console.log("회원가입 후 자동 로그인: 백엔드에서 받은 토큰 사용");
 
           const userId = extractUserIdFromToken(credentials.accessToken);
 
@@ -140,11 +141,49 @@ const handler = NextAuth({
           };
         }
 
-        console.error("토큰 정보가 없습니다.");
-        return null;
+        // 일반 로그인: 백엔드 로그인 API 호출
+        try {
+          console.log("일반 로그인: 백엔드 로그인 API 호출");
+
+          const backendUrl = process.env.BACKEND_URL || "https://teamingkr.duckdns.org/api";
+          const response = await fetch(`${backendUrl}/api/auth/teaming/sign-in`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email: credentials.email,
+              password: credentials.password,
+            }),
+          });
+
+          console.log("로그인 API 응답 상태:", response.status);
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error("로그인 실패:", errorText);
+            return null;
+          }
+
+          const loginResult = await response.json();
+          console.log("로그인 성공");
+
+          const userId = extractUserIdFromToken(loginResult.accessToken);
+
+          return {
+            id: userId?.toString() || "temp-id",
+            email: credentials.email,
+            name: loginResult.name || "사용자",
+            accessToken: loginResult.accessToken,
+            refreshToken: loginResult.refreshToken,
+            userId: userId,
+          };
+        } catch (error) {
+          console.error("로그인 API 호출 오류:", error);
+          return null;
+        }
       },
     }),
-
     /**
      * Google OAuth 제공자
      */

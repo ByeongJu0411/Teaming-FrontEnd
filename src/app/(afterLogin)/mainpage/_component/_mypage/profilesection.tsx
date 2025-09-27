@@ -11,7 +11,7 @@ interface UserInfoResponse {
   name: string;
   avatarKey: string;
   avatarVersion: number;
-  avatarUrl?: string; // 추가
+  avatarUrl?: string;
 }
 
 interface AvatarIntentResponse {
@@ -198,6 +198,10 @@ export default function ProfileSection() {
       setUserInfo({ ...userInfo, nickname: editNickname.trim() });
       console.log("이름 변경 성공:", editNickname);
       alert("이름이 성공적으로 변경되었습니다!");
+
+      // 커스텀 이벤트 발생 - ActionBar가 이를 감지하여 사용자 정보를 다시 조회
+      window.dispatchEvent(new CustomEvent("userNameUpdated"));
+      console.log("userNameUpdated 이벤트 발생");
     } catch (error) {
       console.error("이름 변경 중 오류:", error);
       alert("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
@@ -395,6 +399,10 @@ export default function ProfileSection() {
 
       // 업로드 완료 후 사용자 정보 새로고침
       await fetchUserInfo();
+
+      // 커스텀 이벤트 발생 - ActionBar가 이를 감지하여 사용자 정보를 다시 조회
+      window.dispatchEvent(new CustomEvent("userAvatarUpdated"));
+      console.log("userAvatarUpdated 이벤트 발생");
     } catch (error) {
       console.error("S3 업로드 에러:", error);
       alert(error instanceof Error ? error.message : "파일 업로드에 실패했습니다.");
