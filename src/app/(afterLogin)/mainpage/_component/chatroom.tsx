@@ -19,7 +19,22 @@ import SpotlightCard from "@/app/_component/SpotlightCard";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useChatMessages } from "@/hooks/useChatMessages";
 
-// MessageAttachment 타입 정의
+interface MemberEnteredEvent {
+  roomId: number;
+  member: {
+    memberId: number;
+    lastReadMessageId: number | null;
+    name: string;
+    avatarUrl: string | null;
+    avatarVersion: number | null;
+    roomRole: "LEADER" | string;
+  };
+}
+
+interface RoomSuccessEvent {
+  roomId: number;
+}
+
 interface MessageAttachment {
   fileId: number;
   sortOrder: number;
@@ -39,7 +54,6 @@ interface MessageAttachment {
   ready: boolean;
 }
 
-// 멤버 타입 정의
 interface Member {
   memberId: number;
   lastReadMessageId: number;
@@ -50,7 +64,6 @@ interface Member {
   roomRole: "LEADER" | string;
 }
 
-// ChatUser 타입 정의
 interface ChatUser {
   id: number;
   name: string;
@@ -72,10 +85,9 @@ interface ChatRoomProps {
     roomImageUrl?: string;
   };
   onRoomUpdate?: (roomId: string, unreadCount: number) => void;
-  onRefreshRoom?: () => void; // 추가: 방 정보 새로고침 함수
+  onRefreshRoom?: () => void;
 }
 
-// WebSocket 메시지 타입
 interface WSChatMessage {
   messageId: number;
   roomId: number;
@@ -91,7 +103,6 @@ interface WSChatMessage {
   attachments: MessageAttachment[];
 }
 
-// ChatMessage 컴포넌트용 타입
 interface ChatMessageType {
   id: number;
   content: string;
@@ -103,7 +114,6 @@ interface ChatMessageType {
   attachments?: MessageAttachment[];
 }
 
-// 기본 아바타 생성 함수 (fallback용)
 const generateAvatar = (name: string): string => {
   const avatars = ["🐱", "🐶", "🐰", "🐻", "🐼", "🐨", "🐯", "🦁", "🐸", "🐵"];
   const index = name.length % avatars.length;
@@ -123,6 +133,8 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
   const [showPayment, setShowPayment] = useState<boolean>(true);
   const [isSuccessCompleted, setIsSuccessCompleted] = useState<boolean>(false);
   const [showExitModal, setShowExitModal] = useState<boolean>(false);
+  const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
+  const [members, setMembers] = useState<Member[]>(roomData.members || []);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -130,7 +142,6 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
   const imageFileRef = useRef<HTMLInputElement | null>(null);
   const documentFileRef = useRef<HTMLInputElement | null>(null);
 
-  // 현재 로그인한 사용자 정보
   const currentUser = {
     id: Number(session?.userId),
     name: session?.user?.name || "사용자",
@@ -141,7 +152,6 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
   const token = session?.accessToken || "";
   const roomId = roomData.id;
 
-  // WebSocket 메시지를 화면 표시용 타입으로 변환
   const convertWSMessageToDisplay = useCallback((wsMsg: WSChatMessage): ChatMessageType => {
     return {
       id: wsMsg.messageId,
@@ -155,7 +165,6 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
     };
   }, []);
 
-  // 메시지 관리 훅
   const {
     messages: apiMessages,
     loading: messagesLoading,
@@ -167,7 +176,41 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
     currentUserId: currentUser.id,
   });
 
-  // WebSocket 훅
+  const handleMemberEntered = useCallback((event: MemberEnteredEvent) => {
+    console.log("새 멤버 입장:", event.member);
+
+    setMembers((prevMembers) => {
+      const exists = prevMembers.some((m) => m.memberId === event.member.memberId);
+      if (exists) {
+        console.log("이미 존재하는 멤버:", event.member.memberId);
+        return prevMembers;
+      }
+
+      return [
+        ...prevMembers,
+        {
+          memberId: event.member.memberId,
+          lastReadMessageId: event.member.lastReadMessageId || 0,
+          name: event.member.name,
+          avatarKey: "",
+          avatarVersion: event.member.avatarVersion || 0,
+          avatarUrl: event.member.avatarUrl || undefined,
+          roomRole: event.member.roomRole,
+        },
+      ];
+    });
+  }, []);
+
+  const handleRoomSuccess = useCallback((event: RoomSuccessEvent) => {
+    console.log("팀플 성공 알림 수신:", event);
+
+    // 모든 멤버에게 성공 모달 표시
+    setShowSuccessModal(true);
+
+    // 모든 멤버에게 나가기 버튼 표시
+    setIsSuccessCompleted(true);
+  }, []);
+
   const { isConnected, sendMessage: wsSendMessage } = useWebSocket({
     roomId,
     token,
@@ -193,15 +236,15 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
         onRoomUpdate(roomId, 0);
       }
     },
+    onMemberEntered: handleMemberEntered,
+    onRoomSuccess: handleRoomSuccess,
   });
 
-  // API 메시지를 화면 표시용으로 변환
   useEffect(() => {
     const converted = apiMessages.map(convertWSMessageToDisplay);
     setDisplayMessages(converted);
   }, [apiMessages, convertWSMessageToDisplay]);
 
-  // 사용자 정보 변경 이벤트 감지 - 방 정보 새로고침
   useEffect(() => {
     const handleUserInfoUpdate = () => {
       console.log("ChatRoom: 사용자 정보 업데이트 감지, 방 정보 새로고침 요청");
@@ -219,14 +262,15 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
     };
   }, [onRefreshRoom]);
 
-  // 멤버 데이터 처리
-  const actualMembers: Member[] = roomData.members || [];
+  useEffect(() => {
+    if (roomData.members) {
+      setMembers(roomData.members);
+    }
+  }, [roomData.members]);
 
-  // 방 생성 시 설정한 목표 인원수 (결제 계산에 사용)
-  const targetMemberCount: number = roomData.memberCount || actualMembers.length || 0;
+  const targetMemberCount: number = roomData.memberCount || members.length || 0;
 
-  // 멤버 정보를 ChatMessage에서 사용할 수 있는 형태로 변환
-  const chatUsers: ChatUser[] = actualMembers.map((member: Member) => {
+  const chatUsers: ChatUser[] = members.map((member: Member) => {
     const avatarUrl = member.avatarUrl || "";
 
     return {
@@ -239,12 +283,10 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
     };
   });
 
-  // 자동 스크롤
   const scrollToBottom = useCallback((): void => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  // 메시지 전송
   const handleSendMessage = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
 
@@ -259,12 +301,10 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
     }
   };
 
-  // 입력 변화 처리
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setMessage(e.target.value);
   };
 
-  // 키보드 이벤트 처리
   const handleKeyPress = (e: React.KeyboardEvent): void => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -272,7 +312,6 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
     }
   };
 
-  // 파일 선택 (이미지/문서 구분)
   const openImageSelector = (): void => {
     imageFileRef.current?.click();
     setFileModalStatus(false);
@@ -283,7 +322,6 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
     setFileModalStatus(false);
   };
 
-  // 파일 업로드 Intent API 호출
   const handleFileUpload = async (file: File, fileType: "IMAGE" | "DOCUMENT"): Promise<void> => {
     try {
       if (!token) {
@@ -299,7 +337,6 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
         uploadType: fileType,
       });
 
-      // 1. Intent API 요청
       const requestBody = {
         fileName: file.name,
         contentType: file.type,
@@ -320,14 +357,12 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
       if (!intentResponse.ok) {
         const errorText = await intentResponse.text();
         console.error("Intent API 실패:", errorText);
-        alert(`파일 업로드 준비 실패: ${errorText}`);
         return;
       }
 
       const intentData = await intentResponse.json();
       console.log("Intent 성공:", intentData);
 
-      // 2. S3에 파일 업로드
       console.log("=== S3 업로드 시작 ===");
       const s3UploadResponse = await fetch(intentData.url, {
         method: "PUT",
@@ -342,13 +377,11 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
       if (!s3UploadResponse.ok) {
         const errorText = await s3UploadResponse.text();
         console.error("S3 업로드 실패:", errorText);
-        alert("파일 업로드에 실패했습니다.");
         return;
       }
 
       console.log("S3 업로드 성공!");
 
-      // 3. Complete API 호출
       console.log("=== 파일 업로드 확정 시작 ===");
       const completeResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/files/complete/${roomId}`, {
         method: "POST",
@@ -366,33 +399,26 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
       if (!completeResponse.ok) {
         const errorText = await completeResponse.text();
         console.error("Complete API 실패:", errorText);
-        alert("파일 업로드 확정에 실패했습니다.");
         return;
       }
 
       const completeData = await completeResponse.json();
       console.log("파일 업로드 완료:", completeData);
 
-      // 4. 파일 타입에 따라 WebSocket 메시지 타입 결정
       const messageType = fileType === "IMAGE" ? "IMAGE" : "FILE";
 
-      // 5. WebSocket으로 파일 메시지 전송 (fileId 배열로 전달)
       const fileMessageSuccess = wsSendMessage(file.name, messageType, [completeData.fileId]);
 
       if (fileMessageSuccess) {
-        alert(`파일 "${file.name}"이 성공적으로 업로드되었습니다!`);
         setTimeout(() => scrollToBottom(), 100);
       } else {
         console.error("파일 메시지 전송 실패");
-        alert("파일 업로드는 완료되었으나 메시지 전송에 실패했습니다.");
       }
     } catch (error) {
       console.error("파일 업로드 오류:", error);
-      alert("파일 업로드 중 오류가 발생했습니다.");
     }
   };
 
-  // 이미지 파일 선택 핸들러
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const file = e.target.files?.[0];
     if (file) {
@@ -401,7 +427,6 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
     }
   };
 
-  // 문서 파일 선택 핸들러
   const handleDocumentFileChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const file = e.target.files?.[0];
     if (file) {
@@ -410,7 +435,6 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
     }
   };
 
-  // 방 타입 정보
   const getRoomTypeInfo = () => {
     const roomTypes = [
       {
@@ -444,21 +468,13 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
     return roomTypes.find((type) => type.id === roomType) || roomTypes[0];
   };
 
-  // Payment 완료 핸들러
   const handlePaymentComplete = (): void => {
     setShowPayment(false);
   };
 
-  // 팀장 여부
   const isLeader = roomData.role === "LEADER";
 
-  // 팀플 성공 처리
   const handleSuccess = async (): Promise<void> => {
-    if (!isLeader) {
-      alert("팀장만 팀플 성공을 선언할 수 있습니다.");
-      return;
-    }
-
     const confirmSuccess = window.confirm("팀플을 성공으로 마무리하시겠습니까?");
     if (!confirmSuccess) return;
 
@@ -472,25 +488,20 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
       });
 
       if (response.ok) {
-        alert("팀플이 성공적으로 완료되었습니다! 🎉");
         setIsSuccessCompleted(true);
       } else {
         const errorText = await response.text();
         console.error("팀플 성공 처리 실패:", errorText);
-        alert("팀플 성공 처리 중 오류가 발생했습니다.");
       }
     } catch (error) {
       console.error("팀플 성공 API 호출 오류:", error);
-      alert("네트워크 오류가 발생했습니다.");
     }
   };
 
-  // 티밍룸 나가기 버튼 클릭 (모달 표시)
   const handleExit = (): void => {
     setShowExitModal(true);
   };
 
-  // 실제 나가기 처리
   const handleConfirmExit = async (): Promise<void> => {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/rooms/${roomData.id}`, {
@@ -514,12 +525,10 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
     }
   };
 
-  // 메시지 변경 시 스크롤
   useEffect(() => {
     scrollToBottom();
   }, [displayMessages.length, scrollToBottom]);
 
-  // 세션 체크
   if (!session) {
     return (
       <div className={styles.container}>
@@ -608,7 +617,6 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
                     <div ref={messagesEndRef} />
                   </div>
                 </div>
-
                 <form onSubmit={handleSendMessage} className={styles.chatInput}>
                   <button
                     type="button"
@@ -675,9 +683,9 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
           </div>
 
           <div className={styles.chatUserList}>
-            <div className={styles.userListTitle}>참여자 ({actualMembers.length})</div>
-            {actualMembers.length > 0 ? (
-              actualMembers.map((member: Member) => {
+            <div className={styles.userListTitle}>참여자 ({members.length})</div>
+            {members.length > 0 ? (
+              members.map((member: Member) => {
                 const avatarUrl = member.avatarUrl || "";
                 const hasAvatar = !!avatarUrl;
 
@@ -794,14 +802,14 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
         <DataRoom
           setModal={() => setDataRoomModalStatus(!dataRoomModalStatus)}
           roomId={roomData.id}
-          members={actualMembers}
+          members={members}
         />
       )}
 
       {missionModalStatus && (
         <CreateMission
           setModal={() => setMissionModalStatus(!missionModalStatus)}
-          members={actualMembers}
+          members={members}
           roomId={roomData.id}
           onAssignmentCreated={() => {
             console.log("과제 생성 완료");
@@ -813,11 +821,32 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
         <AssignmentRoom
           setModal={() => setAssignmentModalStatus(!assignmentModalStatus)}
           roomId={Number(roomData.id)}
-          members={actualMembers}
+          members={members}
         />
       )}
 
-      {/* 나가기 확인 모달 */}
+      {showSuccessModal && (
+        <div className={styles.exitModalOverlay} onClick={() => setShowSuccessModal(false)}>
+          <div onClick={(e) => e.stopPropagation()}>
+            <SpotlightCard className={styles.exitModalCard} spotlightColor="rgba(63, 63, 212, 0.3)">
+              <div className={styles.exitModalContent}>
+                <h2 className={styles.exitModalTitle}>🎉 팀플 성공!</h2>
+                <p className={styles.exitModalDescription}>
+                  {roomData.role === "LEADER"
+                    ? "팀플이 성공적으로 완료되었습니다!\n환급이 진행되었으니 티밍룸을 나가실 수 있습니다."
+                    : "팀장이 팀플 성공을 선언했습니다!\n환급이 진행되었으니 티밍룸을 나가실 수 있습니다."}
+                </p>
+                <div className={styles.exitModalButtons}>
+                  <button className={styles.exitModalConfirm} onClick={() => setShowSuccessModal(false)}>
+                    확인
+                  </button>
+                </div>
+              </div>
+            </SpotlightCard>
+          </div>
+        </div>
+      )}
+
       {showExitModal && (
         <div className={styles.exitModalOverlay} onClick={() => setShowExitModal(false)}>
           <div onClick={(e) => e.stopPropagation()}>

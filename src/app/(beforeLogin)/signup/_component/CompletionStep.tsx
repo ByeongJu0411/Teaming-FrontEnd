@@ -317,7 +317,6 @@ export default function CompletionStep({ nickname, signupData }: CompletionStepP
           console.log("✅ 프로필 이미지 URL:", uploadedImageUrl);
         }
 
-        alert(`${nickname}님, 환영합니다!`);
         router.push("/mainpage");
       }
     } catch (error) {

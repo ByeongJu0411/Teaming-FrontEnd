@@ -3,22 +3,24 @@ import React, { useEffect, useState } from "react";
 import styles from "./createmission.module.css";
 import { IoChevronBack } from "react-icons/io5";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
 
-// 멤버 타입 정의 (ActionBar에서 가져온 것과 동일)
+// 멤버 타입 정의
 interface Member {
   memberId: number;
   lastReadMessageId: number;
   name: string;
   avatarKey: string;
   avatarVersion: number;
+  avatarUrl?: string; // ✅ avatarUrl 추가
   roomRole: "LEADER" | string;
 }
 
 interface ModalProps {
   setModal: () => void;
-  members?: Member[]; // 방 멤버 정보 추가
-  roomId: string; // 방 ID 추가
-  onAssignmentCreated?: () => void; // 과제 생성 완료 콜백 추가
+  members?: Member[];
+  roomId: string;
+  onAssignmentCreated?: () => void;
 }
 
 // 기본 아바타 생성 함수
@@ -54,7 +56,6 @@ const CreateMission = ({ setModal, members = [], roomId, onAssignmentCreated }: 
   };
 
   const handleCreateMission = async () => {
-    // 유효성 검사
     if (!missionTitle.trim()) {
       alert("과제 제목을 입력해주세요.");
       return;
@@ -73,13 +74,12 @@ const CreateMission = ({ setModal, members = [], roomId, onAssignmentCreated }: 
     setIsLoading(true);
 
     try {
-      // 날짜 형식 변환 (ISO 8601 형식으로)
       const dueDateString = `${dueDate.year}-${dueDate.month}-${dueDate.day}T${dueDate.hour}:${dueDate.minute}:45.300Z`;
 
       const missionData = {
         title: missionTitle,
         description: missionDescription,
-        assignedMemberIds: selectedMembers.map((id) => parseInt(id)), // string을 number로 변환
+        assignedMemberIds: selectedMembers.map((id) => parseInt(id)),
         due: dueDateString,
       };
 
@@ -113,7 +113,6 @@ const CreateMission = ({ setModal, members = [], roomId, onAssignmentCreated }: 
         }
       }
 
-      // 응답에 내용이 있는지 확인 후 JSON 파싱
       let result = null;
       const contentType = response.headers.get("content-type");
 
@@ -133,12 +132,11 @@ const CreateMission = ({ setModal, members = [], roomId, onAssignmentCreated }: 
 
       alert("과제가 성공적으로 생성되었습니다!");
 
-      // 과제 생성 완료 후 AssignmentRoom 새로고침을 위한 콜백 호출
       if (onAssignmentCreated) {
         onAssignmentCreated();
       }
 
-      setModal(); // 모달 닫기
+      setModal();
     } catch (error) {
       console.error("과제 생성 실패:", error);
       alert(`과제 생성에 실패했습니다:\n${error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다."}`);
@@ -157,7 +155,6 @@ const CreateMission = ({ setModal, members = [], roomId, onAssignmentCreated }: 
   return (
     <div onClick={setModal} className={styles.modalBackground}>
       <div onClick={preventOffModal} className={styles.modal}>
-        {/* 헤더 */}
         <div className={styles.modalHeader}>
           <button onClick={setModal} className={styles.backButton}>
             <IoChevronBack size={24} />
@@ -165,9 +162,7 @@ const CreateMission = ({ setModal, members = [], roomId, onAssignmentCreated }: 
           <h2 className={styles.modalTitle}>과제 생성하기</h2>
         </div>
 
-        {/* 컨텐츠 */}
         <div className={styles.modalContent}>
-          {/* 과제 제목 */}
           <div className={styles.section}>
             <label className={styles.sectionTitle}>과제 제목</label>
             <input
@@ -179,7 +174,6 @@ const CreateMission = ({ setModal, members = [], roomId, onAssignmentCreated }: 
             />
           </div>
 
-          {/* 과제 설명 */}
           <div className={styles.section}>
             <label className={styles.sectionTitle}>과제 설명</label>
             <textarea
@@ -191,65 +185,78 @@ const CreateMission = ({ setModal, members = [], roomId, onAssignmentCreated }: 
             />
           </div>
 
-          {/* 팀원 역할부여 */}
           <div className={styles.section}>
             <label className={styles.sectionTitle}>팀원 역할부여 ({members.length}명)</label>
             <div className={styles.memberList}>
               {members.length > 0 ? (
-                members.map((member) => (
-                  <div
-                    key={member.memberId}
-                    className={styles.memberItem}
-                    onClick={() => handleMemberToggle(member.memberId.toString())}
-                  >
-                    <div className={styles.memberInfo}>
-                      <div className={styles.memberAvatar}>
-                        {member.avatarKey ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={`${process.env.NEXT_PUBLIC_BACKEND_URL}/files/${member.avatarKey}?v=${member.avatarVersion}`}
-                            alt={member.name}
-                            className={styles.avatarImage}
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = "none";
-                              if (target.nextSibling) {
-                                (target.nextSibling as HTMLElement).style.display = "block";
-                              }
-                            }}
-                          />
-                        ) : null}
-                        <span className={styles.emojiAvatar} style={{ display: member.avatarKey ? "none" : "block" }}>
-                          {generateAvatar(member.name)}
-                        </span>
-                      </div>
-                      <div className={styles.memberNameContainer}>
-                        <span className={styles.memberName}>
-                          {member.name}
-                          {member.roomRole === "LEADER" && <span className={styles.leaderBadge}>👑</span>}
-                        </span>
-                      </div>
-                    </div>
+                members.map((member) => {
+                  const avatarUrl = member.avatarUrl || "";
+                  const hasAvatar = !!avatarUrl;
+
+                  return (
                     <div
-                      className={`${styles.checkbox} ${
-                        selectedMembers.includes(member.memberId.toString()) ? styles.checked : ""
-                      }`}
+                      key={member.memberId}
+                      className={styles.memberItem}
+                      onClick={() => handleMemberToggle(member.memberId.toString())}
                     >
-                      {selectedMembers.includes(member.memberId.toString()) && (
-                        <span className={styles.checkmark}>✓</span>
-                      )}
+                      <div className={styles.memberInfo}>
+                        <div className={styles.memberAvatar}>
+                          {hasAvatar ? (
+                            <>
+                              <Image
+                                src={avatarUrl}
+                                alt={member.name}
+                                width={40}
+                                height={40}
+                                className={styles.avatarImage}
+                                unoptimized
+                                onError={(e) => {
+                                  const target = e.currentTarget;
+                                  target.style.display = "none";
+                                  const parent = target.parentElement;
+                                  if (parent) {
+                                    const emojiSpan = parent.querySelector(`.${styles.emojiAvatar}`) as HTMLElement;
+                                    if (emojiSpan) {
+                                      emojiSpan.style.display = "flex";
+                                    }
+                                  }
+                                }}
+                              />
+                              <span className={styles.emojiAvatar} style={{ display: "none" }}>
+                                {generateAvatar(member.name)}
+                              </span>
+                            </>
+                          ) : (
+                            <span className={styles.emojiAvatar}>{generateAvatar(member.name)}</span>
+                          )}
+                        </div>
+                        <div className={styles.memberNameContainer}>
+                          <span className={styles.memberName}>
+                            {member.name}
+                            {member.roomRole === "LEADER" && <span className={styles.leaderBadge}>👑</span>}
+                          </span>
+                        </div>
+                      </div>
+                      <div
+                        className={`${styles.checkbox} ${
+                          selectedMembers.includes(member.memberId.toString()) ? styles.checked : ""
+                        }`}
+                      >
+                        {selectedMembers.includes(member.memberId.toString()) && (
+                          <span className={styles.checkmark}>✓</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className={styles.noMembers}>멤버 정보를 불러오는 중입니다...</div>
               )}
             </div>
           </div>
 
-          {/* 제한시간 설정 */}
           <div className={styles.section}>
-            <label className={styles.sectionTitle}>제한시간 설정</label>
+            <label className={styles.sectionTitle}>마감기한 설정</label>
             <div className={styles.dateTimeContainer}>
               <div className={styles.dateInputs}>
                 <select
@@ -260,6 +267,8 @@ const CreateMission = ({ setModal, members = [], roomId, onAssignmentCreated }: 
                   <option value="2024">2024</option>
                   <option value="2025">2025</option>
                   <option value="2026">2026</option>
+                  <option value="2027">2027</option>
+                  <option value="2028">2028</option>
                 </select>
                 <span className={styles.dateLabel}>년</span>
 
@@ -320,7 +329,6 @@ const CreateMission = ({ setModal, members = [], roomId, onAssignmentCreated }: 
           </div>
         </div>
 
-        {/* 과제 생성 버튼 */}
         <div className={styles.modalFooter}>
           <button
             onClick={handleCreateMission}

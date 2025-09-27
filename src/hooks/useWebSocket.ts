@@ -3,9 +3,14 @@ import { Client, IMessage } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 
 // 명세서 기반 정확한 타입 정의
+
+interface RoomSuccessEvent {
+  roomId: number;
+}
+
 interface MessageAttachment {
   fileId: number;
-  uploaderId: number; // ✅ 추가
+  uploaderId: number;
   sortOrder: number;
   name: string;
   type: "IMAGE" | "FILE" | "VIDEO" | "AUDIO";
@@ -60,12 +65,26 @@ interface UserRoomEvent {
   lastMessage: LastMessagePreview | null;
 }
 
+interface MemberEnteredEvent {
+  roomId: number;
+  member: {
+    memberId: number;
+    lastReadMessageId: number | null;
+    name: string;
+    avatarUrl: string | null;
+    avatarVersion: number | null;
+    roomRole: "LEADER" | string;
+  };
+}
+
 interface UseWebSocketProps {
   roomId: string;
   token: string;
   onMessageReceived: (message: ChatMessage) => void;
   onReadBoundaryUpdate?: (update: ReadBoundaryUpdate) => void;
   onRoomEvent?: (event: UserRoomEvent) => void;
+  onMemberEntered?: (event: MemberEnteredEvent) => void;
+  onRoomSuccess?: (event: RoomSuccessEvent) => void;
   onError?: (error: string) => void;
 }
 
@@ -75,6 +94,8 @@ export const useWebSocket = ({
   onMessageReceived,
   onReadBoundaryUpdate,
   onRoomEvent,
+  onMemberEntered,
+  onRoomSuccess,
   onError,
 }: UseWebSocketProps) => {
   const [isConnected, setIsConnected] = useState(false);
@@ -86,7 +107,6 @@ export const useWebSocket = ({
 
     setIsConnecting(true);
 
-    // 토큰을 쿼리 파라미터로 전달 (SockJS 핸드셰이크 시 사용)
     const wsUrl = `${
       process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080"
     }/ws-sockjs?token=${encodeURIComponent(token)}`;
@@ -95,8 +115,6 @@ export const useWebSocket = ({
 
     const client = new Client({
       webSocketFactory: () => new SockJS(wsUrl),
-
-      // STOMP 연결 시에도 헤더로 전달 (메시지 전송 시 사용)
       connectHeaders: {
         Authorization: `Bearer ${token}`,
       },
@@ -137,7 +155,33 @@ export const useWebSocket = ({
         }
       });
 
-      // 3. 에러 메시지 구독
+      // 3. 멤버 입장 이벤트 구독
+      client.subscribe(`/topic/rooms/${roomId}/enter`, (message: IMessage) => {
+        try {
+          const event: MemberEnteredEvent = JSON.parse(message.body);
+          console.log("멤버 입장 이벤트:", event);
+          if (onMemberEntered) {
+            onMemberEntered(event);
+          }
+        } catch (error) {
+          console.error("멤버 입장 이벤트 파싱 오류:", error);
+        }
+      });
+
+      // 4. 팀플 성공, 이벤트 구독
+      client.subscribe(`/topic/rooms/${roomId}/success`, (message: IMessage) => {
+        try {
+          const event: RoomSuccessEvent = JSON.parse(message.body);
+          console.log("팀플 성공 이벤트:", event);
+          if (onRoomSuccess) {
+            onRoomSuccess(event);
+          }
+        } catch (error) {
+          console.error("팀플 성공 이벤트 파싱 오류:", error);
+        }
+      });
+
+      // 5. 에러 메시지 구독
       client.subscribe("/user/queue/errors", (message: IMessage) => {
         console.error("WebSocket Error:", message.body);
         try {
@@ -152,7 +196,7 @@ export const useWebSocket = ({
         }
       });
 
-      // 4. 개인 방 이벤트 구독 (unread 등)
+      // 6. 개인 방 이벤트 구독 (unread 등)
       client.subscribe("/user/queue/room-events", (message: IMessage) => {
         try {
           const event: UserRoomEvent = JSON.parse(message.body);
@@ -183,7 +227,7 @@ export const useWebSocket = ({
 
     client.activate();
     clientRef.current = client;
-  }, [roomId, token, onMessageReceived, onReadBoundaryUpdate, onRoomEvent, onError]);
+  }, [token, roomId, onMessageReceived, onReadBoundaryUpdate, onMemberEntered, onRoomSuccess, onError, onRoomEvent]);
 
   const disconnect = useCallback(() => {
     if (clientRef.current) {
@@ -230,7 +274,6 @@ export const useWebSocket = ({
     },
     [roomId]
   );
-
   useEffect(() => {
     if (token && roomId) {
       connect();
@@ -239,8 +282,7 @@ export const useWebSocket = ({
     return () => {
       disconnect();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, roomId]);
+  }, [token, roomId, connect, disconnect]);
 
   return {
     isConnected,
