@@ -3,6 +3,11 @@ import { Client, IMessage } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 
 // 명세서 기반 정확한 타입 정의
+
+interface RoomSuccessEvent {
+  roomId: number;
+}
+
 interface MessageAttachment {
   fileId: number;
   uploaderId: number;
@@ -79,6 +84,7 @@ interface UseWebSocketProps {
   onReadBoundaryUpdate?: (update: ReadBoundaryUpdate) => void;
   onRoomEvent?: (event: UserRoomEvent) => void;
   onMemberEntered?: (event: MemberEnteredEvent) => void;
+  onRoomSuccess?: (event: RoomSuccessEvent) => void;
   onError?: (error: string) => void;
 }
 
@@ -89,6 +95,7 @@ export const useWebSocket = ({
   onReadBoundaryUpdate,
   onRoomEvent,
   onMemberEntered,
+  onRoomSuccess,
   onError,
 }: UseWebSocketProps) => {
   const [isConnected, setIsConnected] = useState(false);
@@ -161,7 +168,20 @@ export const useWebSocket = ({
         }
       });
 
-      // 4. 에러 메시지 구독
+      // 4. 팀플 성공, 이벤트 구독
+      client.subscribe(`/topic/rooms/${roomId}/success`, (message: IMessage) => {
+        try {
+          const event: RoomSuccessEvent = JSON.parse(message.body);
+          console.log("팀플 성공 이벤트:", event);
+          if (onRoomSuccess) {
+            onRoomSuccess(event);
+          }
+        } catch (error) {
+          console.error("팀플 성공 이벤트 파싱 오류:", error);
+        }
+      });
+
+      // 5. 에러 메시지 구독
       client.subscribe("/user/queue/errors", (message: IMessage) => {
         console.error("WebSocket Error:", message.body);
         try {
@@ -176,7 +196,7 @@ export const useWebSocket = ({
         }
       });
 
-      // 5. 개인 방 이벤트 구독 (unread 등)
+      // 6. 개인 방 이벤트 구독 (unread 등)
       client.subscribe("/user/queue/room-events", (message: IMessage) => {
         try {
           const event: UserRoomEvent = JSON.parse(message.body);
@@ -207,7 +227,7 @@ export const useWebSocket = ({
 
     client.activate();
     clientRef.current = client;
-  }, [roomId, token, onMessageReceived, onReadBoundaryUpdate, onRoomEvent, onMemberEntered, onError]);
+  }, [token, roomId, onMessageReceived, onReadBoundaryUpdate, onMemberEntered, onRoomSuccess, onError, onRoomEvent]);
 
   const disconnect = useCallback(() => {
     if (clientRef.current) {

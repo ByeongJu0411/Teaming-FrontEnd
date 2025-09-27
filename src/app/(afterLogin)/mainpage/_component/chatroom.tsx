@@ -31,6 +31,10 @@ interface MemberEnteredEvent {
   };
 }
 
+interface RoomSuccessEvent {
+  roomId: number;
+}
+
 interface MessageAttachment {
   fileId: number;
   sortOrder: number;
@@ -129,6 +133,7 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
   const [showPayment, setShowPayment] = useState<boolean>(true);
   const [isSuccessCompleted, setIsSuccessCompleted] = useState<boolean>(false);
   const [showExitModal, setShowExitModal] = useState<boolean>(false);
+  const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
   const [members, setMembers] = useState<Member[]>(roomData.members || []);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -196,6 +201,16 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
     });
   }, []);
 
+  const handleRoomSuccess = useCallback((event: RoomSuccessEvent) => {
+    console.log("팀플 성공 알림 수신:", event);
+
+    // 모든 멤버에게 성공 모달 표시
+    setShowSuccessModal(true);
+
+    // 모든 멤버에게 나가기 버튼 표시
+    setIsSuccessCompleted(true);
+  }, []);
+
   const { isConnected, sendMessage: wsSendMessage } = useWebSocket({
     roomId,
     token,
@@ -222,6 +237,7 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
       }
     },
     onMemberEntered: handleMemberEntered,
+    onRoomSuccess: handleRoomSuccess,
   });
 
   useEffect(() => {
@@ -459,11 +475,6 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
   const isLeader = roomData.role === "LEADER";
 
   const handleSuccess = async (): Promise<void> => {
-    if (!isLeader) {
-      alert("팀장만 팀플 성공을 선언할 수 있습니다.");
-      return;
-    }
-
     const confirmSuccess = window.confirm("팀플을 성공으로 마무리하시겠습니까?");
     if (!confirmSuccess) return;
 
@@ -477,16 +488,13 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
       });
 
       if (response.ok) {
-        alert("팀플이 성공적으로 완료되었습니다! 🎉");
         setIsSuccessCompleted(true);
       } else {
         const errorText = await response.text();
         console.error("팀플 성공 처리 실패:", errorText);
-        alert("팀플 성공 처리 중 오류가 발생했습니다.");
       }
     } catch (error) {
       console.error("팀플 성공 API 호출 오류:", error);
-      alert("네트워크 오류가 발생했습니다.");
     }
   };
 
@@ -815,6 +823,28 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
           roomId={Number(roomData.id)}
           members={members}
         />
+      )}
+
+      {showSuccessModal && (
+        <div className={styles.exitModalOverlay} onClick={() => setShowSuccessModal(false)}>
+          <div onClick={(e) => e.stopPropagation()}>
+            <SpotlightCard className={styles.exitModalCard} spotlightColor="rgba(63, 63, 212, 0.3)">
+              <div className={styles.exitModalContent}>
+                <h2 className={styles.exitModalTitle}>🎉 팀플 성공!</h2>
+                <p className={styles.exitModalDescription}>
+                  {roomData.role === "LEADER"
+                    ? "팀플이 성공적으로 완료되었습니다!\n환급이 진행되었으니 티밍룸을 나가실 수 있습니다."
+                    : "팀장이 팀플 성공을 선언했습니다!\n환급이 진행되었으니 티밍룸을 나가실 수 있습니다."}
+                </p>
+                <div className={styles.exitModalButtons}>
+                  <button className={styles.exitModalConfirm} onClick={() => setShowSuccessModal(false)}>
+                    확인
+                  </button>
+                </div>
+              </div>
+            </SpotlightCard>
+          </div>
+        </div>
       )}
 
       {showExitModal && (
