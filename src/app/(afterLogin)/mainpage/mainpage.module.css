@@ -10,3 +10,87 @@
   overflow: hidden; /* 전체 컨테이너 스크롤 방지 */
   padding-left: 3rem; /* 좌측 패딩 복원 */
 }
+
+/* mainpage.module.css에 추가할 스타일 */
+
+/* 인증 오류 모달 */
+.authErrorModal {
+  width: 90%;
+  max-width: 500px;
+  padding: 0;
+  background: linear-gradient(135deg, rgba(20, 30, 48, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
+  border-radius: 20px;
+  border: 1px solid rgba(63, 131, 248, 0.3);
+  box-shadow: 0 20px 60px rgba(63, 131, 248, 0.2);
+}
+
+.authErrorContent {
+  padding: 40px 30px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.authErrorTitle {
+  font-size: 32px;
+  font-weight: bold;
+  color: #3b82f6;
+  margin: 0;
+  text-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+}
+
+.authErrorDescription {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.authErrorButton {
+  padding: 14px 40px;
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+.authErrorButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+}
+
+.authErrorButton:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+  .authErrorModal {
+    max-width: 90%;
+  }
+
+  .authErrorContent {
+    padding: 30px 20px;
+    gap: 20px;
+  }
+
+  .authErrorTitle {
+    font-size: 24px;
+  }
+
+  .authErrorDescription {
+    font-size: 14px;
+  }
+
+  .authErrorButton {
+    padding: 12px 30px;
+    font-size: 14px;
+  }
+}

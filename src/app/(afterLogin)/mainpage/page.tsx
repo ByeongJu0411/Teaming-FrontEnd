@@ -1,7 +1,7 @@
 "use client";
 
 import { JSX, useState, useEffect, useRef } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import styles from "./mainpage.module.css";
 import ActionBar from "./_component/actionbar";
@@ -10,8 +10,8 @@ import FindRoom from "./_component/findroom";
 import MyPage from "./_component/mypage";
 import ChatRoom from "./_component/chatroom";
 import Welcome from "./_component/welcome";
+import SpotlightCard from "@/app/_component/SpotlightCard";
 
-// ✅ Room 타입 정의 추가
 interface Member {
   memberId: number;
   lastReadMessageId: number;
@@ -34,7 +34,7 @@ export default function MainPage(): JSX.Element {
   const [selectedMenu, setSelectedMenu] = useState<string | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<{ id: string; name: string; lastChat: string } | null>(null);
   const [backendAuthAttempted, setBackendAuthAttempted] = useState<boolean>(false);
-  const [, setCanProceedWithoutBackend] = useState<boolean>(false);
+  const [showAuthErrorModal, setShowAuthErrorModal] = useState<boolean>(false);
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
   const [, setRooms] = useState<Room[]>([]);
   const { data: session, status } = useSession();
@@ -58,36 +58,39 @@ export default function MainPage(): JSX.Element {
     }
 
     if (status === "authenticated" && session) {
-      console.log("NextAuth 인증 성공");
-      console.log("백엔드 인증 상태:", session.isBackendAuthenticated);
-      console.log("백엔드 토큰 존재:", !!session.accessToken);
+      console.log("=== MainPage 세션 정보 ===");
+      console.log("Provider:", session.provider);
+      console.log("User Name:", session.user?.name);
+      console.log("User Email:", session.user?.email);
+      console.log("Access Token 존재:", !!session.accessToken);
+      console.log("Is Backend Authenticated:", session.isBackendAuthenticated);
+      console.log("========================");
 
-      // 백엔드 인증 상태에 따른 처리
-      if (session.isBackendAuthenticated && session.accessToken && session.accessToken !== "temporary_skip_token") {
-        console.log("백엔드 JWT 토큰 사용 가능 - 정상 진행");
-        setBackendAuthAttempted(true);
-        setCanProceedWithoutBackend(false);
-      } else {
-        console.log("백엔드 JWT 토큰 없음 - 제한된 기능으로 진행");
-        setBackendAuthAttempted(true);
-        setCanProceedWithoutBackend(true);
+      // 백엔드 인증 실패 시 모달 표시
+      if (!session.isBackendAuthenticated || !session.accessToken) {
+        console.error("❌ 백엔드 JWT 토큰이 없습니다.");
 
-        // 백엔드 에러 정보 출력 (타입 안전하게)
-        const sessionWithError = session as typeof session & {
-          backendError?: {
-            hasError: boolean;
-            status: number;
-            message: string;
-            isNetworkError: boolean;
-          };
-        };
-
-        if (sessionWithError.backendError) {
-          console.log("백엔드 에러 정보:", sessionWithError.backendError);
+        if (session.backendError) {
+          console.error("백엔드 에러 정보:", session.backendError);
         }
+
+        setBackendAuthAttempted(true);
+        setShowAuthErrorModal(true);
+        return;
       }
+
+      // 백엔드 인증 성공
+      console.log("✅ 백엔드 JWT 토큰 사용 가능 - 정상 진행");
+      setBackendAuthAttempted(true);
     }
   }, [status, session, router]);
+
+  // 로그인 페이지로 이동
+  const handleGoToLogin = async () => {
+    hasRedirected.current = true;
+    await signOut({ redirect: false });
+    router.push("/login");
+  };
 
   const handleRoomUpdate = (roomId: string, unreadCount: number) => {
     setRooms((prevRooms) => prevRooms.map((room) => (room.id === roomId ? { ...room, unreadCount } : room)));
@@ -109,7 +112,6 @@ export default function MainPage(): JSX.Element {
   };
 
   const handleRoomCreated = () => {
-    // 방 생성 완료 시 refreshTrigger를 증가시켜 ActionBar 새로고침
     setRefreshTrigger((prev) => prev + 1);
   };
 
@@ -128,13 +130,6 @@ export default function MainPage(): JSX.Element {
       default:
         return <Welcome />;
     }
-  };
-
-  // 백엔드 토큰 재발급 시도 함수
-  const retryBackendAuth = async (): Promise<void> => {
-    console.log("백엔드 인증 재시도");
-    // 페이지 새로고침으로 NextAuth 콜백 재실행
-    window.location.reload();
   };
 
   // 로딩 중 (NextAuth 세션 로딩)
@@ -177,11 +172,24 @@ export default function MainPage(): JSX.Element {
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
+          minWidth: "100vw",
           minHeight: "100vh",
-          background: "#f8fafc",
+          background: "black",
+          color: "white",
         }}
       >
         <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              width: "40px",
+              height: "40px",
+              border: "4px solid rgba(255,255,255,0.3)",
+              borderTop: "4px solid white",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+              margin: "0 auto 1rem",
+            }}
+          ></div>
           <h2>로그인 페이지로 이동 중...</h2>
         </div>
       </div>
@@ -215,6 +223,33 @@ export default function MainPage(): JSX.Element {
           ></div>
           <p>백엔드 인증 확인 중...</p>
         </div>
+      </div>
+    );
+  }
+
+  // 백엔드 인증 실패 모달
+  if (showAuthErrorModal) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minWidth: "100vw",
+          minHeight: "100vh",
+          background: "black",
+          color: "white",
+        }}
+      >
+        <SpotlightCard className={styles.authErrorModal} spotlightColor="rgba(59, 130, 246, 0.3)">
+          <div className={styles.authErrorContent}>
+            <h2 className={styles.authErrorTitle}>로그인 오류입니다!</h2>
+            <p className={styles.authErrorDescription}>가입된 이메일이 있는지 확인해주세요.</p>
+            <button className={styles.authErrorButton} onClick={handleGoToLogin}>
+              로그인 페이지로 이동
+            </button>
+          </div>
+        </SpotlightCard>
       </div>
     );
   }
