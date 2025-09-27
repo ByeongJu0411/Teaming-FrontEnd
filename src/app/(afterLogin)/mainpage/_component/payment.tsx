@@ -3,7 +3,6 @@ import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import styles from "./payment.module.css";
-
 interface RoomType {
   id: string;
   name: string;
