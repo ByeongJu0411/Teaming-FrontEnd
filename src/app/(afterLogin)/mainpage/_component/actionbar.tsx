@@ -269,8 +269,6 @@ export default function ActionBar({
     });
 
     client.onConnect = () => {
-      console.log("ActionBar: WebSocket Connected");
-
       client.subscribe("/user/queue/room-events", (message: IMessage) => {
         try {
           const event: UserRoomEvent = JSON.parse(message.body);
@@ -279,9 +277,12 @@ export default function ActionBar({
           setRooms((prevRooms) =>
             prevRooms.map((room) => {
               if (room.id === event.roomId.toString()) {
+                // ✅ lastMessage가 있을 때만 업데이트
+                const newLastChat = event.lastMessage?.content ? event.lastMessage.content : room.lastChat;
+
                 return {
                   ...room,
-                  lastChat: event.lastMessage?.content || room.lastChat,
+                  lastChat: newLastChat,
                   unreadCount: event.unreadCount,
                 };
               }
