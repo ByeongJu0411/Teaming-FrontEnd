@@ -19,16 +19,13 @@ import SpotlightCard from "@/app/_component/SpotlightCard";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useChatMessages } from "@/hooks/useChatMessages";
 
-interface MemberEnteredEvent {
-  roomId: number;
-  member: {
-    memberId: number;
-    lastReadMessageId: number | null;
-    name: string;
-    avatarUrl: string | null;
-    avatarVersion: number | null;
-    roomRole: "LEADER" | string;
-  };
+interface RoomMemberResponseDto {
+  memberId: number;
+  lastReadMessageId: number | null;
+  name: string;
+  avatarUrl: string | null;
+  avatarVersion: number | null;
+  roomRole: "LEADER" | string;
 }
 
 interface RoomSuccessEvent {
@@ -176,26 +173,26 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
     currentUserId: currentUser.id,
   });
 
-  const handleMemberEntered = useCallback((event: MemberEnteredEvent) => {
-    console.log("새 멤버 입장:", event.member);
+  const handleMemberEntered = useCallback((member: RoomMemberResponseDto) => {
+    console.log("새 멤버 입장:", member);
 
     setMembers((prevMembers) => {
-      const exists = prevMembers.some((m) => m.memberId === event.member.memberId);
+      const exists = prevMembers.some((m) => m.memberId === member.memberId);
       if (exists) {
-        console.log("이미 존재하는 멤버:", event.member.memberId);
+        console.log("이미 존재하는 멤버:", member.memberId);
         return prevMembers;
       }
 
       return [
         ...prevMembers,
         {
-          memberId: event.member.memberId,
-          lastReadMessageId: event.member.lastReadMessageId || 0,
-          name: event.member.name,
+          memberId: member.memberId,
+          lastReadMessageId: member.lastReadMessageId || 0,
+          name: member.name,
           avatarKey: "",
-          avatarVersion: event.member.avatarVersion || 0,
-          avatarUrl: event.member.avatarUrl || undefined,
-          roomRole: event.member.roomRole,
+          avatarVersion: member.avatarVersion || 0,
+          avatarUrl: member.avatarUrl || undefined,
+          roomRole: member.roomRole,
         },
       ];
     });
