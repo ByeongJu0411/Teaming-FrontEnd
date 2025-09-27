@@ -56,6 +56,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
     }
 
     const backendUrl = process.env.BACKEND_URL || "http://13.125.193.243:8080";
+    console.log("토큰 갱신 백엔드 URL:", backendUrl);
 
     const response = await fetch(`${backendUrl}/api/auth/token/access-token`, {
       method: "POST",
@@ -71,7 +72,8 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
     console.log("토큰 갱신 응답 상태:", response.status);
 
     if (!response.ok) {
-      console.error("토큰 갱신 실패:", response.status, await response.text());
+      const errorText = await response.text();
+      console.error("토큰 갱신 실패:", response.status, errorText);
       throw new Error("Token refresh failed");
     }
 
@@ -145,7 +147,9 @@ const handler = NextAuth({
         try {
           console.log("일반 로그인: 백엔드 로그인 API 호출");
 
-          const backendUrl = process.env.BACKEND_URL || "https://teamingkr.duckdns.org/api";
+          const backendUrl = process.env.BACKEND_URL || "http://13.125.193.243:8080";
+          console.log("로그인 백엔드 URL:", `${backendUrl}/api/auth/teaming/sign-in`);
+
           const response = await fetch(`${backendUrl}/api/auth/teaming/sign-in`, {
             method: "POST",
             headers: {
@@ -299,6 +303,7 @@ const handler = NextAuth({
        * 초기 소셜 로그인 시 백엔드 JWT 토큰 교환
        */
       if (account && account.provider !== "credentials") {
+        console.log("=== 소셜 로그인 백엔드 토큰 교환 시작 ===");
         console.log("소셜 OAuth Account 정보:", {
           provider: account.provider,
           type: account.type,
@@ -319,13 +324,19 @@ const handler = NextAuth({
               break;
             default:
               console.error("지원하지 않는 제공자:", account.provider);
+              token.backendError = true;
+              token.backendErrorMessage = `지원하지 않는 제공자: ${account.provider}`;
               return token;
           }
 
           const backendUrl = process.env.BACKEND_URL || "http://13.125.193.243:8080";
           const fullUrl = `${backendUrl}${endpoint}`;
 
-          console.log("백엔드 요청 URL:", fullUrl);
+          console.log("=== 백엔드 토큰 교환 요청 ===");
+          console.log("Provider:", account.provider);
+          console.log("Endpoint:", endpoint);
+          console.log("Full URL:", fullUrl);
+          console.log("Access Token 존재:", !!account.access_token);
 
           const response = await fetch(fullUrl, {
             method: "POST",
@@ -338,15 +349,17 @@ const handler = NextAuth({
             }),
           });
 
-          console.log("백엔드 응답 상태:", response.status);
+          console.log("백엔드 응답 상태:", response.status, response.statusText);
 
           const responseText = await response.text();
-          console.log("백엔드 응답 내용:", responseText);
+          console.log("백엔드 응답 본문 (첫 200자):", responseText.substring(0, 200));
 
           if (response.ok) {
             try {
               const backendTokens: BackendJWTResponse = JSON.parse(responseText);
-              console.log("백엔드 JWT 파싱 성공");
+              console.log("✅ 백엔드 JWT 파싱 성공");
+              console.log("- accessToken 존재:", !!backendTokens.accessToken);
+              console.log("- refreshToken 존재:", !!backendTokens.refreshToken);
 
               const tokenExpiration = getTokenExpiration(backendTokens.accessToken);
               const fallbackExpiration = Date.now() + (backendTokens.expiresIn || 7 * 24 * 60 * 60) * 1000;
@@ -359,32 +372,50 @@ const handler = NextAuth({
               token.provider = account.provider;
               token.backendError = false;
 
-              console.log("백엔드 토큰 저장 완료, userId:", userId);
+              console.log("백엔드 토큰 저장 완료:");
+              console.log("- userId:", userId);
+              console.log("- provider:", account.provider);
+              console.log("- tokenExpires:", new Date(token.backendTokenExpires as number).toLocaleString());
             } catch (parseError) {
-              console.error("JSON 파싱 실패:", parseError);
+              console.error("❌ JSON 파싱 실패:", parseError);
+              console.error("응답 전체:", responseText);
+
+              token.provider = account.provider;
               token.backendError = true;
+              token.backendErrorMessage = `JSON 파싱 실패: ${
+                parseError instanceof Error ? parseError.message : String(parseError)
+              }`;
             }
           } else {
-            console.error(`백엔드 API 실패 (${response.status}):`, responseText);
+            console.error(`❌ 백엔드 API 실패 (${response.status}):`, responseText);
 
             token.provider = account.provider;
             token.backendError = true;
             token.backendErrorStatus = response.status;
-            token.backendErrorMessage = responseText;
+            token.backendErrorMessage = responseText || `HTTP ${response.status} ${response.statusText}`;
           }
         } catch (error) {
-          console.error("백엔드 API 호출 중 네트워크 오류:", error);
+          console.error("❌ 백엔드 API 호출 중 네트워크 오류:", error);
+          console.error("오류 상세:", {
+            name: error instanceof Error ? error.name : "Unknown",
+            message: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack?.substring(0, 200) : "No stack",
+          });
 
           token.provider = account.provider;
           token.backendError = true;
           token.networkError = true;
+          token.backendErrorMessage = error instanceof Error ? error.message : String(error);
         }
+
+        console.log("=== 소셜 로그인 토큰 교환 완료 ===");
       }
 
       console.log("=== JWT CALLBACK END ===");
       console.log("최종 토큰 상태:", {
         hasBackendToken: !!token.backendAccessToken,
         hasError: !!token.backendError,
+        errorMessage: token.backendErrorMessage || "없음",
         provider: token.provider,
         userId: token.userId,
         userName: token.name,

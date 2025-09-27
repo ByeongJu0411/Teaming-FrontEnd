@@ -99,3 +99,8 @@
   background: rgba(255, 255, 255, 0.12);
   transform: translateY(-1px);
 }
+
+.error_message {
+  padding: 1rem;
+  color: rgba(247, 247, 247, 0.5);
+}

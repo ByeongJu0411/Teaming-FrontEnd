@@ -57,7 +57,10 @@ const PaymentModal = ({ setModal, roomType, memberCount, onPaymentComplete }: Mo
         return;
       }
 
-      const response = await fetch(`http://13.125.193.243:8080/payment/html?amount=${amount}`, {
+      // 환경변수 사용
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080";
+
+      const response = await fetch(`${backendUrl}/payment/html?amount=${amount}`, {
         method: "GET",
         headers: {
           Accept: "text/html",

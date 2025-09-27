@@ -57,15 +57,6 @@ export default function SocialLoginButton() {
     );
   }
 
-  // 이미 로그인된 상태일 때
-  if (status === "authenticated") {
-    return (
-      <div className={styles.social_buttons}>
-        <div className={styles.success_message}>✅ 로그인 성공! 메인 페이지로 이동 중...</div>
-      </div>
-    );
-  }
-
   return (
     <div className={styles.social_buttons}>
       {/* 카카오 로그인 버튼 */}

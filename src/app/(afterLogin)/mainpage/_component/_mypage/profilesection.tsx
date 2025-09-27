@@ -57,6 +57,23 @@ export default function ProfileSection() {
       setLoading(true);
       setError(null);
 
+      // 소셜 로그인인 경우 session 정보 직접 사용
+      if (session?.provider && session.provider !== "credentials") {
+        console.log("ProfileSection: 소셜 로그인 사용자 정보 사용");
+
+        setUserInfo((prev) => ({
+          ...prev,
+          email: session.user?.email || "",
+          nickname: session.user?.name || "사용자",
+          profileImage: session.user?.image || "/basicProfile.webp",
+        }));
+
+        setEditNickname(session.user?.name || "사용자");
+        setLoading(false);
+        return;
+      }
+
+      // 자체 로그인인 경우 API 호출
       const token = session?.accessToken;
 
       if (!token) {
@@ -70,6 +87,8 @@ export default function ProfileSection() {
           throw new Error("백엔드 인증이 완료되지 않았습니다.");
         }
       }
+
+      console.log("ProfileSection: 자체 로그인 사용자 정보 API 조회");
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users/me`, {
         method: "GET",
@@ -118,6 +137,10 @@ export default function ProfileSection() {
     session?.isBackendAuthenticated,
     session?.backendError?.hasError,
     session?.backendError?.message,
+    session?.provider,
+    session?.user?.email,
+    session?.user?.name,
+    session?.user?.image,
   ]);
 
   useEffect(() => {
