@@ -63,16 +63,14 @@ interface UserRoomEvent {
   lastMessage: LastMessagePreview | null;
 }
 
-interface MemberEnteredEvent {
-  roomId: number;
-  member: {
-    memberId: number;
-    lastReadMessageId: number | null;
-    name: string;
-    avatarUrl: string | null;
-    avatarVersion: number | null;
-    roomRole: "LEADER" | string;
-  };
+// ✅ 서버 응답 형식에 맞게 수정
+interface RoomMemberResponseDto {
+  memberId: number;
+  lastReadMessageId: number | null;
+  name: string;
+  avatarUrl: string | null;
+  avatarVersion: number | null;
+  roomRole: "LEADER" | string;
 }
 
 interface UseWebSocketProps {
@@ -81,7 +79,7 @@ interface UseWebSocketProps {
   onMessageReceived: (message: ChatMessage) => void;
   onReadBoundaryUpdate?: (update: ReadBoundaryUpdate) => void;
   onRoomEvent?: (event: UserRoomEvent) => void;
-  onMemberEntered?: (event: MemberEnteredEvent) => void;
+  onMemberEntered?: (member: RoomMemberResponseDto) => void; // ✅ 타입 변경
   onRoomSuccess?: (event: RoomSuccessEvent) => void;
   onError?: (error: string) => void;
 }
@@ -100,7 +98,6 @@ export const useWebSocket = ({
   const [isConnecting, setIsConnecting] = useState(false);
   const clientRef = useRef<Client | null>(null);
 
-  // 콜백들을 ref로 저장하여 의존성 문제 해결
   const callbacksRef = useRef({
     onMessageReceived,
     onReadBoundaryUpdate,
@@ -110,7 +107,6 @@ export const useWebSocket = ({
     onError,
   });
 
-  // 콜백이 변경될 때마다 ref 업데이트
   useEffect(() => {
     callbacksRef.current = {
       onMessageReceived,
@@ -171,13 +167,13 @@ export const useWebSocket = ({
         }
       });
 
-      // 3. 멤버 입장 이벤트 구독
+      // 3. 멤버 입장 이벤트 구독 - ✅ 수정됨
       client.subscribe(`/topic/rooms/${roomId}/enter`, (message: IMessage) => {
         try {
-          const event: MemberEnteredEvent = JSON.parse(message.body);
-          console.log("멤버 입장 이벤트:", event);
+          const member: RoomMemberResponseDto = JSON.parse(message.body);
+          console.log("멤버 입장 이벤트:", member);
           if (callbacksRef.current.onMemberEntered) {
-            callbacksRef.current.onMemberEntered(event);
+            callbacksRef.current.onMemberEntered(member);
           }
         } catch (error) {
           console.error("멤버 입장 이벤트 파싱 오류:", error);
@@ -235,7 +231,6 @@ export const useWebSocket = ({
         callbacksRef.current.onError("서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.");
       }
 
-      // 자동 재연결 중단
       client.deactivate();
     };
 
