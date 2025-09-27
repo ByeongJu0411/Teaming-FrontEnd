@@ -1,219 +1,283 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import Image from "next/image";
-import { useSession } from "next-auth/react";
-import styles from "./payment.module.css";
 
-interface RoomType {
+import { JSX, useState, useEffect, useRef } from "react";
+import { useSession, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import styles from "./mainpage.module.css";
+import ActionBar from "./_component/actionbar";
+import CreateRoom from "./_component/createroom";
+import FindRoom from "./_component/findroom";
+import MyPage from "./_component/mypage";
+import ChatRoom from "./_component/chatroom";
+import Welcome from "./_component/welcome";
+import SpotlightCard from "@/app/_component/SpotlightCard";
+
+interface Member {
+  memberId: number;
+  lastReadMessageId: number;
+  name: string;
+  avatarKey: string;
+  avatarVersion: number;
+  roomRole: "LEADER" | string;
+}
+
+interface Room {
   id: string;
   name: string;
-  price: string;
-  description: string;
-  icon: string;
-  iconClass: string;
-  isElite?: boolean;
+  lastChat: string;
+  unreadCount?: number;
+  memberCount?: number;
+  members?: Member[];
 }
 
-interface ModalProps {
-  setModal: () => void;
-  roomType: RoomType;
-  memberCount: number;
-  onPaymentComplete: () => void;
-  roomId: string;
-}
+export default function MainPage(): JSX.Element {
+  const [selectedMenu, setSelectedMenu] = useState<string | null>(null);
+  const [selectedRoom, setSelectedRoom] = useState<{ id: string; name: string; lastChat: string } | null>(null);
+  const [backendAuthAttempted, setBackendAuthAttempted] = useState<boolean>(false);
+  const [showAuthErrorModal, setShowAuthErrorModal] = useState<boolean>(false);
+  const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
+  const [, setRooms] = useState<Room[]>([]);
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const hasRedirected = useRef(false);
 
-const PaymentModal = ({ setModal, roomType, memberCount, onPaymentComplete, roomId }: ModalProps) => {
-  const [step, setStep] = useState(1);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [isPaymentLoading, setIsPaymentLoading] = useState(false);
-  const { data: session } = useSession();
+  // NextAuth 인증 체크 및 백엔드 토큰 상태 관리
+  useEffect(() => {
+    if (hasRedirected.current) return;
 
-  const preventOffModal = (event: React.MouseEvent) => {
-    event.stopPropagation();
-  };
+    if (status === "loading") {
+      console.log("세션 로딩 중...");
+      return;
+    }
 
-  const handleNext = () => {
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setStep(2);
-      setIsTransitioning(false);
-    }, 300);
-  };
+    if (status === "unauthenticated") {
+      console.log("NextAuth 인증되지 않음 - 로그인 페이지로 이동");
+      hasRedirected.current = true;
+      router.push("/login");
+      return;
+    }
 
-  const handlePayment = async () => {
-    setIsPaymentLoading(true);
+    if (status === "authenticated" && session) {
+      console.log("=== MainPage 세션 정보 ===");
+      console.log("Provider:", session.provider);
+      console.log("User Name:", session.user?.name);
+      console.log("User Email:", session.user?.email);
+      console.log("Access Token 존재:", !!session.accessToken);
+      console.log("Is Backend Authenticated:", session.isBackendAuthenticated);
+      console.log("=======================");
 
-    try {
-      const pricePerPerson = parseInt(roomType.price.replace(/[^0-9]/g, ""));
-      const amount = pricePerPerson * (memberCount - 1);
+      // 백엔드 인증 실패 시 모달 표시
+      if (!session.isBackendAuthenticated || !session.accessToken) {
+        console.error("❌ 백엔드 JWT 토큰이 없습니다.");
 
-      console.log("결제 금액:", amount, "원");
-      console.log("결제 roomId:", roomId);
+        if (session.backendError) {
+          console.error("백엔드 에러 정보:", session.backendError);
+        }
 
-      const token = session?.accessToken;
+        setBackendAuthAttempted(true);
+        setShowAuthErrorModal(true);
 
-      if (!token) {
-        alert("로그인이 필요합니다.");
-        setIsPaymentLoading(false);
         return;
       }
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080";
-      //amout와 roomId, platform을 보냈습니다
-      const response = await fetch(`${backendUrl}/payment/html?amount=${amount}&roomId=${roomId}&platform=WEB`, {
-        method: "GET",
-        headers: {
-          Accept: "text/html",
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      // 백엔드 인증 성공
+      console.log("✅ 백엔드 JWT 토큰 사용 가능 - 정상 진행");
+      setBackendAuthAttempted(true);
+    }
+  }, [status, session, router]);
 
-      if (response.status === 200) {
-        const htmlContent = await response.text();
-        console.log("결제 페이지 로드 성공");
+  // 로그인 페이지로 이동
+  const handleGoToLogin = async () => {
+    hasRedirected.current = true;
+    await signOut({ redirect: false });
+    router.push("/login");
+  };
 
-        const paymentWindow = window.open("", "_blank", "width=600,height=800");
-        if (paymentWindow) {
-          paymentWindow.document.write(htmlContent);
-          paymentWindow.document.close();
+  const handleRoomUpdate = (roomId: string, unreadCount: number) => {
+    setRooms((prevRooms) => prevRooms.map((room) => (room.id === roomId ? { ...room, unreadCount } : room)));
+  };
 
-          // URL 변경 감지 (결제 완료 redirect 감지)
-          const checkPaymentStatus = setInterval(() => {
-            try {
-              if (paymentWindow.closed) {
-                clearInterval(checkPaymentStatus);
-                console.log("결제창이 닫혔습니다.");
-                setIsPaymentLoading(false);
-                return;
-              }
-
-              const currentUrl = paymentWindow.location.href;
-
-              if (currentUrl.includes("/payment/success")) {
-                clearInterval(checkPaymentStatus);
-                console.log("결제 성공 감지!");
-
-                // 성공 페이지가 자동으로 닫히길 기다림 (2초)
-                setTimeout(() => {
-                  if (!paymentWindow.closed) {
-                    paymentWindow.close();
-                  }
-                  alert("결제가 성공적으로 완료되었습니다!");
-                  onPaymentComplete();
-                  setModal();
-                }, 2000);
-              } else if (currentUrl.includes("/payment/fail")) {
-                clearInterval(checkPaymentStatus);
-                console.log("결제 실패 감지!");
-
-                // 실패 페이지가 자동으로 닫히길 기다림 (2초)
-                setTimeout(() => {
-                  if (!paymentWindow.closed) {
-                    paymentWindow.close();
-                  }
-                  alert("결제가 실패했습니다. 다시 시도해주세요.");
-                  setIsPaymentLoading(false);
-                }, 2000);
-              }
-            } catch (error) {
-              // Cross-origin 접근 불가 시 (결제 진행 중)
-              // 에러는 무시하고 계속 체크
-            }
-          }, 500);
-        } else {
-          console.error("팝업이 차단되었습니다.");
-          alert("팝업 차단을 해제해주세요.");
-          setIsPaymentLoading(false);
-        }
-      } else if (response.status === 500) {
-        console.error("결제 실패: 서버 오류");
-        alert("결제가 실패되었습니다. 다시 시도해주세요.");
-        setIsPaymentLoading(false);
-      } else {
-        console.error("결제 페이지 로드 실패:", response.status, response.statusText);
-        alert("결제 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
-        setIsPaymentLoading(false);
-      }
-    } catch (error) {
-      console.error("결제 API 호출 오류:", error);
-      alert("결제 처리 중 네트워크 오류가 발생했습니다. 다시 시도해주세요.");
-      setIsPaymentLoading(false);
+  const handleMenuSelect = (menu: string): void => {
+    if (menu === "" || menu === null) {
+      setSelectedMenu(null);
+      setSelectedRoom(null);
+    } else {
+      setSelectedMenu(menu);
+      setSelectedRoom(null);
     }
   };
 
-  const priceNumber = parseInt(roomType.price.replace(/[^0-9]/g, ""));
-  const calculatedAmount = priceNumber * (memberCount - 1);
-  const totalPrice = calculatedAmount;
+  const handleRoomSelect = (room: { id: string; name: string; lastChat: string }): void => {
+    setSelectedRoom(room);
+    setSelectedMenu(null);
+  };
 
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "auto";
-    };
-  }, []);
+  const handleRoomCreated = () => {
+    setRefreshTrigger((prev) => prev + 1);
+  };
 
-  return (
-    <div onClick={setModal} className={styles.modalBackground}>
-      <div onClick={preventOffModal} className={styles.modal}>
-        <div className={styles.paymentCard}>
-          <div className={styles.contentArea}>
-            <div className={`${styles.slideContainer} ${isTransitioning ? styles.transitioning : ""}`}>
-              <div className={`${styles.slide} ${step === 1 ? styles.active : styles.slideOut}`}>
-                <div className={styles.stepContent}>
-                  <h2 className={styles.cardTitle}>결제가 필요합니다</h2>
-                  <p className={styles.cardDescription}>
-                    방에 접근하려면 방 설정에 따른 기프티콘 결제가 필요합니다
-                    <br />
-                    만약 패널티를 받지 않는다면 수수료를 제외하고 전액 환불됩니다
-                  </p>
-                </div>
-              </div>
+  const renderContent = (): JSX.Element | null => {
+    if (selectedRoom) {
+      return <ChatRoom roomData={selectedRoom} onRoomUpdate={handleRoomUpdate} />;
+    }
 
-              <div className={`${styles.slide} ${step === 2 ? styles.active : styles.slideIn}`}>
-                <div className={styles.stepContent}>
-                  <div className={styles.brandLogo}>
-                    <Image
-                      src={roomType.icon}
-                      alt={roomType.name}
-                      width={100}
-                      height={100}
-                      className={styles.logoImage}
-                    />
-                  </div>
+    switch (selectedMenu) {
+      case "티밍룸 생성":
+        return <CreateRoom onRoomCreated={handleRoomCreated} />;
+      case "티밍룸 찾기":
+        return <FindRoom onRoomJoined={handleRoomCreated} />;
+      case "마이페이지":
+        return <MyPage />;
+      default:
+        return <Welcome />;
+    }
+  };
 
-                  <h2 className={styles.roomTitle}>{roomType.name}</h2>
-                  <p className={styles.roomSubtitle}>{roomType.description}</p>
-
-                  <div className={styles.priceDisplay}>
-                    <p className={styles.pricePerPerson}>{roomType.price}</p>
-                    <div className={styles.totalPriceContainer}>
-                      <span className={styles.totalPriceLabel}>총 결제 금액</span>
-                      <span className={styles.totalPrice}>{totalPrice.toLocaleString()}원</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className={styles.bottomSection}>
-            <div className={styles.progressIndicator}>
-              <div className={`${styles.progressBar} ${step === 1 ? styles.progressActive : ""}`}></div>
-              <div className={`${styles.progressBar} ${step === 2 ? styles.progressActive : ""}`}></div>
-            </div>
-
-            <button
-              onClick={step === 1 ? handleNext : handlePayment}
-              className={styles.actionButton}
-              disabled={isTransitioning || isPaymentLoading}
-            >
-              {step === 1 ? "다음" : isPaymentLoading ? "결제 처리 중..." : "결제하기"}
-            </button>
-          </div>
+  // 로딩 중 (NextAuth 세션 로딩)
+  if (status === "loading") {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minWidth: "100vw",
+          minHeight: "100vh",
+          background: "black",
+          color: "white",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              width: "40px",
+              height: "40px",
+              border: "4px solid rgba(255,255,255,0.3)",
+              borderTop: "4px solid white",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+              margin: "0 auto 1rem",
+            }}
+          ></div>
+          <p>인증 정보 확인 중...</p>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  }
 
-export default PaymentModal;
+  // NextAuth 인증되지 않음
+  if (status === "unauthenticated") {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minWidth: "100vw",
+          minHeight: "100vh",
+          background: "black",
+          color: "white",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              width: "40px",
+              height: "40px",
+              border: "4px solid rgba(255,255,255,0.3)",
+              borderTop: "4px solid white",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+              margin: "0 auto 1rem",
+            }}
+          ></div>
+          <h2>로그인 페이지로 이동 중...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  // 백엔드 인증 시도 전
+  if (!backendAuthAttempted) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "100vh",
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          color: "white",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              width: "40px",
+              height: "40px",
+              border: "4px solid rgba(255,255,255,0.3)",
+              borderTop: "4px solid white",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+              margin: "0 auto 1rem",
+            }}
+          ></div>
+          <p>백엔드 인증 확인 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 백엔드 인증 실패 모달
+  if (showAuthErrorModal) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minWidth: "100vw",
+          minHeight: "100vh",
+          background: "black",
+          color: "white",
+        }}
+      >
+        <SpotlightCard className={styles.authErrorModal} spotlightColor="rgba(59, 130, 246, 0.3)">
+          <div className={styles.authErrorContent}>
+            <h2 className={styles.authErrorTitle}>로그인 오류입니다</h2>
+            <p className={styles.authErrorDescription}>가입된 이메일이 있는지 확인해주세요.</p>
+            <button className={styles.authErrorButton} onClick={handleGoToLogin}>
+              로그인 페이지로 이동
+            </button>
+          </div>
+        </SpotlightCard>
+      </div>
+    );
+  }
+
+  // 정상적인 메인 페이지 렌더링
+  return (
+    <>
+      <style jsx>{`
+        @keyframes spin {
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
+
+      <div className={styles.container}>
+        <ActionBar
+          onMenuSelect={handleMenuSelect}
+          onRoomSelect={handleRoomSelect}
+          selectedRoom={selectedRoom}
+          refreshTrigger={refreshTrigger}
+        />
+        {renderContent()}
+      </div>
+    </>
+  );
+}

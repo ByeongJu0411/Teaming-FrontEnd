@@ -59,7 +59,7 @@ const PaymentModal = ({ setModal, roomType, memberCount, onPaymentComplete, room
 
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080";
 
-      const response = await fetch(`${backendUrl}/payment/html?amount=${amount}&roomId=${roomId}`, {
+      const response = await fetch(`${backendUrl}/payment/html?amount=${amount}&roomId=${roomId}&platform=WEB`, {
         method: "GET",
         headers: {
           Accept: "text/html",
