@@ -9,38 +9,229 @@ interface CompletionStepProps {
     email: string;
     password: string;
     name: string;
-    avatarFile?: File; // 임시 저장된 파일
-    avatarKey?: string;
-    avatarVersion?: number;
+    avatarFile?: File;
   };
+}
+
+interface SignUpResponse {
+  accessToken: string;
+  refreshToken: string;
+}
+
+interface AvatarIntentResponse {
+  key: string;
+  bucket: string;
+  url: string;
+  version?: number;
+  requiredHeaders: Record<string, string>;
+}
+
+interface AvatarCompleteResponse {
+  avatarKey: string;
+  avatarVersion: number;
+  publicUrl: string;
+}
+
+interface UserMeResponse {
+  email: string;
+  name: string;
+  avatarKey: string;
+  avatarVersion: number;
+  avatarUrl?: string;
 }
 
 export default function CompletionStep({ nickname, signupData }: CompletionStepProps) {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
+  const getImageDimensions = (file: File): Promise<{ width: number; height: number }> => {
+    return new Promise((resolve, reject) => {
+      const img = new window.Image();
+      img.onload = () => {
+        resolve({ width: img.naturalWidth, height: img.naturalHeight });
+        URL.revokeObjectURL(img.src);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(img.src);
+        reject(new Error("이미지를 로드할 수 없습니다."));
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  const getUploadIntent = async (file: File, accessToken: string): Promise<AvatarIntentResponse> => {
+    console.log("=== Intent API 호출 ===");
+    console.log("파일 정보:", {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+    });
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users/me/avatar/intent`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        ownerType: "USER",
+        contentType: file.type.toLowerCase(),
+        byteSize: file.size,
+      }),
+    });
+
+    console.log("Intent API 응답 상태:", response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Intent API 실패:", errorText);
+      throw new Error(`Intent API 실패: ${errorText}`);
+    }
+
+    const intentData: AvatarIntentResponse = await response.json();
+    console.log("Intent 성공:", intentData);
+    return intentData;
+  };
+
+  const uploadToS3 = async (file: File, intentData: AvatarIntentResponse): Promise<void> => {
+    console.log("=== S3 업로드 시작 ===");
+    console.log("업로드 URL:", intentData.url);
+
+    const headers: Record<string, string> = {};
+    if (intentData.requiredHeaders) {
+      Object.keys(intentData.requiredHeaders).forEach((key) => {
+        headers[key] = intentData.requiredHeaders[key];
+      });
+    }
+
+    console.log("업로드 헤더:", headers);
+
+    const s3Response = await fetch(intentData.url, {
+      method: "PUT",
+      headers: headers,
+      body: file,
+    });
+
+    console.log("S3 응답 상태:", s3Response.status);
+
+    if (!s3Response.ok) {
+      const errorText = await s3Response.text();
+      console.error("S3 업로드 실패:", errorText);
+      throw new Error(`S3 업로드 실패: ${s3Response.status}`);
+    }
+
+    console.log("S3 업로드 성공!");
+  };
+
+  const completeAvatarUpload = async (
+    accessToken: string,
+    key: string,
+    dimensions: { width: number; height: number }
+  ): Promise<string> => {
+    console.log("=== Complete API 호출 ===");
+    console.log("요청 데이터:", {
+      ownerType: "USER",
+      key: key,
+      width: dimensions.width,
+      height: dimensions.height,
+    });
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users/me/avatar/complete`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        ownerType: "USER",
+        key: key,
+        width: dimensions.width,
+        height: dimensions.height,
+      }),
+    });
+
+    console.log("Complete API 응답 상태:", response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Complete API 실패:", errorText);
+      throw new Error(`Complete API 실패: ${errorText}`);
+    }
+
+    const completeData: AvatarCompleteResponse = await response.json();
+    console.log("Complete API 성공:", completeData);
+    console.log("업로드된 이미지 publicUrl:", completeData.publicUrl);
+
+    return completeData.publicUrl;
+  };
+
+  const verifyAvatarUrl = async (accessToken: string, expectedUrl: string): Promise<void> => {
+    console.log("=== /users/me로 avatarUrl 검증 ===");
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users/me`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      console.error("사용자 정보 조회 실패:", response.status);
+      return;
+    }
+
+    const userData: UserMeResponse = await response.json();
+    console.log("사용자 정보:", userData);
+    console.log("/users/me의 avatarUrl:", userData.avatarUrl);
+
+    if (userData.avatarUrl === expectedUrl) {
+      console.log("✅ publicUrl과 avatarUrl이 일치합니다!");
+      console.log("   publicUrl  :", expectedUrl);
+      console.log("   avatarUrl  :", userData.avatarUrl);
+    } else {
+      console.warn("⚠️ publicUrl과 avatarUrl이 다릅니다!");
+      console.warn("   publicUrl  :", expectedUrl);
+      console.warn("   avatarUrl  :", userData.avatarUrl || "(없음)");
+    }
+  };
+
   const handleStart = async () => {
-    // 필수 데이터 검증
     if (!signupData.email || !signupData.password || !signupData.name) {
       alert("필수 정보가 누락되었습니다. 이전 단계를 다시 확인해주세요.");
       return;
     }
 
+    console.log("==========================================");
+    console.log("=== CompletionStep 시작 ===");
+    console.log("==========================================");
+    console.log("signupData:", signupData);
+    console.log("avatarFile 존재?:", !!signupData.avatarFile);
+    if (signupData.avatarFile) {
+      console.log("avatarFile 정보:", {
+        name: signupData.avatarFile.name,
+        size: signupData.avatarFile.size,
+        type: signupData.avatarFile.type,
+      });
+    }
+    console.log("==========================================");
+
     setIsLoading(true);
 
     try {
-      // API 스펙에 맞는 요청 데이터 구성
+      // 1. 회원가입 API 호출
+      console.log("\n=== 1. 회원가입 API 호출 ===");
+
       const requestBody = {
         email: signupData.email,
         password: signupData.password,
         name: signupData.name,
-        avatarKey: signupData.avatarKey || null,
-        avatarVersion: signupData.avatarVersion || 0,
+        avatarKey: null,
+        avatarVersion: 0,
       };
 
-      console.log("회원가입 요청 데이터:", requestBody);
+      console.log("요청 데이터:", requestBody);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/teaming/sign-up`, {
+      const signUpResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/teaming/sign-up`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -48,149 +239,86 @@ export default function CompletionStep({ nickname, signupData }: CompletionStepP
         body: JSON.stringify(requestBody),
       });
 
-      console.log("응답 상태:", response.status, response.statusText);
+      console.log("회원가입 응답 상태:", signUpResponse.status);
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log("회원가입 성공:", result);
-
-        // 프로필 사진이 있는 경우 업로드 프로세스 진행
-        if (result.accessToken && signupData.avatarFile) {
-          console.log("=== 프로필 이미지 업로드 시작 ===");
-
-          try {
-            const file = signupData.avatarFile;
-
-            // 이미지 크기 정보 추출
-            const getImageDimensions = (file: File): Promise<{ width: number; height: number }> => {
-              return new Promise((resolve, reject) => {
-                const img = new window.Image();
-                img.onload = () => {
-                  resolve({ width: img.naturalWidth, height: img.naturalHeight });
-                  URL.revokeObjectURL(img.src);
-                };
-                img.onerror = () => {
-                  URL.revokeObjectURL(img.src);
-                  reject(new Error("이미지를 로드할 수 없습니다."));
-                };
-                img.src = URL.createObjectURL(file);
-              });
-            };
-
-            const dimensions = await getImageDimensions(file);
-            console.log("이미지 크기:", dimensions);
-
-            // 1. Intent API 호출 (업로드 사전 준비)
-            console.log("1. Intent API 호출");
-            const intentResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users/me/avatar/intent`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${result.accessToken}`,
-              },
-              body: JSON.stringify({
-                ownerType: "USER",
-                contentType: file.type.toLowerCase(),
-                byteSize: file.size,
-              }),
-            });
-
-            if (!intentResponse.ok) {
-              const errorText = await intentResponse.text();
-              throw new Error(`Intent API 실패: ${errorText}`);
-            }
-
-            const intentData = await intentResponse.json();
-            console.log("Intent 성공:", intentData);
-
-            // 2. S3 업로드
-            console.log("2. S3 업로드 시작");
-            const headers: Record<string, string> = {};
-            if (intentData.requiredHeaders) {
-              Object.keys(intentData.requiredHeaders).forEach((key) => {
-                headers[key] = intentData.requiredHeaders[key];
-              });
-            }
-
-            const s3Response = await fetch(intentData.url, {
-              method: "PUT",
-              headers: headers,
-              body: file,
-            });
-
-            if (!s3Response.ok) {
-              throw new Error(`S3 업로드 실패: ${s3Response.status}`);
-            }
-
-            console.log("S3 업로드 성공");
-
-            // 3. Complete API 호출 (아바타 업로드 확정)
-            console.log("3. Complete API 호출");
-            const completeResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users/me/avatar/complete`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${result.accessToken}`,
-              },
-              body: JSON.stringify({
-                ownerType: "USER",
-                key: intentData.key,
-                width: dimensions.width,
-                height: dimensions.height,
-              }),
-            });
-
-            if (completeResponse.ok) {
-              const completeData = await completeResponse.json();
-              console.log("프로필 이미지 설정 완료:", completeData);
-            } else {
-              const errorText = await completeResponse.text();
-              console.warn("Complete API 실패:", errorText);
-            }
-          } catch (avatarError) {
-            console.error("프로필 이미지 업로드 오류:", avatarError);
-            // 실패해도 회원가입은 성공했으므로 계속 진행
-            alert(
-              "프로필 이미지 업로드에 실패했지만, 회원가입은 완료되었습니다. 나중에 마이페이지에서 변경할 수 있습니다."
-            );
-          }
-        }
-
-        // 회원가입 성공 후 자동 로그인
-        console.log("=== 자동 로그인 시도 중 ===");
-
-        const signInResult = await signIn("credentials", {
-          email: signupData.email,
-          password: signupData.password,
-          accessToken: result.accessToken || undefined,
-          refreshToken: result.refreshToken || undefined,
-          redirect: false,
-        });
-
-        console.log("로그인 결과:", signInResult);
-
-        if (signInResult?.error) {
-          console.error("자동 로그인 실패:", signInResult.error);
-          alert(`회원가입은 완료되었으나 자동 로그인에 실패했습니다. 로그인 페이지에서 직접 로그인해주세요.`);
-          router.push("/login");
-        } else if (signInResult?.ok) {
-          console.log("자동 로그인 성공!");
-          alert(`${nickname}님, 환영합니다!`);
-          router.push("/mainpage");
-        }
-      } else {
-        const errorText = await response.text();
-        console.error("회원가입 실패 응답:", errorText);
+      if (!signUpResponse.ok) {
+        const errorText = await signUpResponse.text();
+        console.error("회원가입 실패:", errorText);
 
         let errorMessage = "회원가입에 실패했습니다.";
         try {
           const errorData = JSON.parse(errorText);
           errorMessage = errorData.message || errorMessage;
-        } catch (parseError) {
-          console.error("JSON 파싱 오류:", parseError);
-          errorMessage = `서버 오류 (${response.status}): ${errorText || "알 수 없는 오류"}`;
+        } catch {
+          errorMessage = `서버 오류 (${signUpResponse.status}): ${errorText || "알 수 없는 오류"}`;
         }
         alert(errorMessage);
+        return;
+      }
+
+      const signUpResult: SignUpResponse = await signUpResponse.json();
+      console.log("✅ 회원가입 성공! JWT 토큰 받음");
+
+      let uploadedImageUrl: string | null = null;
+
+      // 2. 프로필 이미지가 있다면 업로드 프로세스 시작
+      if (signupData.avatarFile) {
+        console.log("\n프로필 이미지가 있습니다! 업로드를 시작합니다.");
+
+        try {
+          console.log("\n=== 2. 프로필 이미지 업로드 시작 ===");
+
+          const file = signupData.avatarFile;
+          const dimensions = await getImageDimensions(file);
+          console.log("이미지 크기:", dimensions);
+
+          // Intent API 호출
+          const intentData = await getUploadIntent(file, signUpResult.accessToken);
+
+          // S3 업로드
+          await uploadToS3(file, intentData);
+
+          // Complete API 호출
+          uploadedImageUrl = await completeAvatarUpload(signUpResult.accessToken, intentData.key, dimensions);
+
+          // /users/me로 avatarUrl 검증
+          await verifyAvatarUrl(signUpResult.accessToken, uploadedImageUrl);
+        } catch (avatarError) {
+          console.error("프로필 이미지 업로드 오류:", avatarError);
+          alert(
+            "프로필 이미지 설정에 실패했지만, 회원가입은 완료되었습니다.\n나중에 마이페이지에서 변경할 수 있습니다."
+          );
+        }
+      } else {
+        console.log("\n프로필 이미지가 없습니다. 업로드를 건너뜁니다.");
+      }
+
+      // 3. 자동 로그인
+      console.log("\n=== 3. 자동 로그인 시도 ===");
+
+      const signInResult = await signIn("credentials", {
+        email: signupData.email,
+        password: signupData.password,
+        accessToken: signUpResult.accessToken,
+        refreshToken: signUpResult.refreshToken,
+        redirect: false,
+      });
+
+      console.log("로그인 결과:", signInResult);
+
+      if (signInResult?.error) {
+        console.error("자동 로그인 실패:", signInResult.error);
+        alert("회원가입은 완료되었으나 자동 로그인에 실패했습니다.\n로그인 페이지에서 직접 로그인해주세요.");
+        router.push("/login");
+      } else if (signInResult?.ok) {
+        console.log("✅ 자동 로그인 성공!");
+
+        if (uploadedImageUrl) {
+          console.log("✅ 프로필 이미지 URL:", uploadedImageUrl);
+        }
+
+        alert(`${nickname}님, 환영합니다!`);
+        router.push("/mainpage");
       }
     } catch (error) {
       console.error("회원가입 네트워크 오류:", error);
