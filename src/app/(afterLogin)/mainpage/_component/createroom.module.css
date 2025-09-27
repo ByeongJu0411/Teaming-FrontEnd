@@ -446,11 +446,12 @@
   background-color: #121216;
   border: 1px solid #292929;
   border-radius: 12px;
-  padding: 1.25rem;
+  padding: 1rem;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  align-items: start;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 피그마 디자인에 맞는 섹션 제목 */
@@ -459,13 +460,6 @@
   font-size: 20px;
   font-weight: bold;
   margin: 0 0 1rem 0;
-}
-
-.inviteInputSection {
-  width: 100%;
-  display: flex;
-  flex-direction: row;
-  gap: 1rem;
 }
 
 .inviteInputUpdated {
@@ -667,9 +661,8 @@
 }
 
 .inviteCodeInfo {
-  font-size: 14px;
+  font-size: 20px;
   color: #999;
-  margin-bottom: 16px;
 }
 
 .inviteCodeHighlight {

@@ -72,6 +72,7 @@ interface ChatRoomProps {
     roomImageUrl?: string;
   };
   onRoomUpdate?: (roomId: string, unreadCount: number) => void;
+  onRefreshRoom?: () => void; // 추가: 방 정보 새로고침 함수
 }
 
 // WebSocket 메시지 타입
@@ -109,7 +110,7 @@ const generateAvatar = (name: string): string => {
   return avatars[index];
 };
 
-export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
+export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: ChatRoomProps) {
   const { data: session } = useSession();
 
   const [fileModalStatus, setFileModalStatus] = useState<boolean>(false);
@@ -199,6 +200,24 @@ export default function ChatRoom({ roomData, onRoomUpdate }: ChatRoomProps) {
     const converted = apiMessages.map(convertWSMessageToDisplay);
     setDisplayMessages(converted);
   }, [apiMessages, convertWSMessageToDisplay]);
+
+  // 사용자 정보 변경 이벤트 감지 - 방 정보 새로고침
+  useEffect(() => {
+    const handleUserInfoUpdate = () => {
+      console.log("ChatRoom: 사용자 정보 업데이트 감지, 방 정보 새로고침 요청");
+      if (onRefreshRoom) {
+        onRefreshRoom();
+      }
+    };
+
+    window.addEventListener("userAvatarUpdated", handleUserInfoUpdate);
+    window.addEventListener("userNameUpdated", handleUserInfoUpdate);
+
+    return () => {
+      window.removeEventListener("userAvatarUpdated", handleUserInfoUpdate);
+      window.removeEventListener("userNameUpdated", handleUserInfoUpdate);
+    };
+  }, [onRefreshRoom]);
 
   // 멤버 데이터 처리
   const actualMembers: Member[] = roomData.members || [];

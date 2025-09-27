@@ -1,7 +1,8 @@
 "use client";
 
-import { JSX, useState, useEffect, useRef } from "react";
+import { JSX, useState, useEffect, useRef, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
+import { Room, Member } from "@/types/room";
 import { useRouter } from "next/navigation";
 import styles from "./mainpage.module.css";
 import ActionBar from "./_component/actionbar";
@@ -12,27 +13,9 @@ import ChatRoom from "./_component/chatroom";
 import Welcome from "./_component/welcome";
 import SpotlightCard from "@/app/_component/SpotlightCard";
 
-interface Member {
-  memberId: number;
-  lastReadMessageId: number;
-  name: string;
-  avatarKey: string;
-  avatarVersion: number;
-  roomRole: "LEADER" | string;
-}
-
-interface Room {
-  id: string;
-  name: string;
-  lastChat: string;
-  unreadCount?: number;
-  memberCount?: number;
-  members?: Member[];
-}
-
 export default function MainPage(): JSX.Element {
   const [selectedMenu, setSelectedMenu] = useState<string | null>(null);
-  const [selectedRoom, setSelectedRoom] = useState<{ id: string; name: string; lastChat: string } | null>(null);
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [backendAuthAttempted, setBackendAuthAttempted] = useState<boolean>(false);
   const [showAuthErrorModal, setShowAuthErrorModal] = useState<boolean>(false);
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
@@ -107,7 +90,7 @@ export default function MainPage(): JSX.Element {
     }
   };
 
-  const handleRoomSelect = (room: { id: string; name: string; lastChat: string }): void => {
+  const handleRoomSelect = (room: Room): void => {
     setSelectedRoom(room);
     setSelectedMenu(null);
   };
@@ -116,9 +99,62 @@ export default function MainPage(): JSX.Element {
     setRefreshTrigger((prev) => prev + 1);
   };
 
+  // 선택된 방 정보 새로고침 함수
+  const refreshSelectedRoom = useCallback(async () => {
+    if (!selectedRoom || !session?.accessToken) {
+      console.log("MainPage: 방 정보 새로고침 불가 (방 미선택 또는 토큰 없음)");
+      return;
+    }
+
+    try {
+      console.log("MainPage: 방 정보 새로고침 시작:", selectedRoom.id);
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080"}/rooms/${selectedRoom.id}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${session.accessToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error("MainPage: 방 정보 조회 실패:", response.status);
+        return;
+      }
+
+      const data = await response.json();
+      console.log("MainPage: 방 정보 조회 성공:", data);
+
+      // 멤버 정보에 avatarUrl 추가
+      const membersWithAvatarUrl = data.members.map((member: Member) => ({
+        ...member,
+        avatarUrl: member.avatarUrl || "",
+      }));
+
+      const roomImageUrl = data.avatarUrl || "/good_space1.jpg";
+
+      // 방 정보 업데이트
+      setSelectedRoom({
+        ...selectedRoom,
+        members: membersWithAvatarUrl,
+        name: data.title || selectedRoom.name,
+        type: data.type || selectedRoom.type,
+        role: data.role || selectedRoom.role,
+        memberCount: data.memberCount || selectedRoom.memberCount,
+        roomImageUrl: roomImageUrl,
+      });
+
+      console.log("MainPage: 방 정보 업데이트 완료");
+    } catch (error) {
+      console.error("MainPage: 방 정보 새로고침 오류:", error);
+    }
+  }, [selectedRoom, session?.accessToken]);
+
   const renderContent = (): JSX.Element | null => {
     if (selectedRoom) {
-      return <ChatRoom roomData={selectedRoom} onRoomUpdate={handleRoomUpdate} />;
+      return <ChatRoom roomData={selectedRoom} onRoomUpdate={handleRoomUpdate} onRefreshRoom={refreshSelectedRoom} />;
     }
 
     switch (selectedMenu) {
@@ -244,8 +280,8 @@ export default function MainPage(): JSX.Element {
       >
         <SpotlightCard className={styles.authErrorModal} spotlightColor="rgba(59, 130, 246, 0.3)">
           <div className={styles.authErrorContent}>
-            <h2 className={styles.authErrorTitle}>로그인 오류입니다</h2>
-            <p className={styles.authErrorDescription}>가입된 이메일이 있는지 확인해주세요.</p>
+            <h2 className={styles.authErrorTitle}>토큰 오류입니다!</h2>
+            <p className={styles.authErrorDescription}>등록된 계정이 이미 존재하거나, 토큰 만료 오류입니다.</p>
             <button className={styles.authErrorButton} onClick={handleGoToLogin}>
               로그인 페이지로 이동
             </button>

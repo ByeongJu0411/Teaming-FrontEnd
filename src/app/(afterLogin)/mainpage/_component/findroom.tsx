@@ -55,6 +55,7 @@ export default function FindRoom({ onRoomJoined }: FindRoomProps): JSX.Element {
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [isJoining, setIsJoining] = useState<boolean>(false);
   const [searchError, setSearchError] = useState<string>("");
+  const [hasSearched, setHasSearched] = useState<boolean>(false); // 검색 실행 여부 추적
 
   // API 응답을 UI 표시용 데이터로 변환
   const convertApiResponseToRoomInfo = (apiResponse: RoomSearchResponse): RoomInfo => {
@@ -85,6 +86,7 @@ export default function FindRoom({ onRoomJoined }: FindRoomProps): JSX.Element {
     setIsSearching(true);
     setSearchError("");
     setRoomInfo(null);
+    setHasSearched(true); // 검색 실행 표시
 
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080";
@@ -102,17 +104,10 @@ export default function FindRoom({ onRoomJoined }: FindRoomProps): JSX.Element {
       console.log("Response status:", response.status);
 
       if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("인증이 만료되었습니다. 다시 로그인해주세요.");
-        } else if (response.status === 403) {
-          throw new Error("접근 권한이 없습니다.");
-        } else if (response.status === 404) {
-          throw new Error("해당하는 티밍룸을 찾을 수 없습니다.");
-        } else {
-          const errorText = await response.text();
-          console.error("Error response:", errorText);
-          throw new Error(`서버 오류가 발생했습니다. (${response.status})`);
-        }
+        // 모든 에러 상황에서 에러를 던지지 않고 조용히 종료
+        console.log(`검색 실패 (${response.status})`);
+        setIsSearching(false);
+        return;
       }
 
       const responseText = await response.text();
@@ -132,8 +127,8 @@ export default function FindRoom({ onRoomJoined }: FindRoomProps): JSX.Element {
       const convertedRoomInfo = convertApiResponseToRoomInfo(apiResponse);
       setRoomInfo(convertedRoomInfo);
     } catch (error) {
+      // 모든 에러를 조용히 처리 (에러 메시지 표시 안 함)
       console.error("방 검색 실패:", error);
-      setSearchError(error instanceof Error ? error.message : "방 검색에 실패했습니다.");
       setRoomInfo(null);
     } finally {
       setIsSearching(false);
@@ -196,6 +191,7 @@ export default function FindRoom({ onRoomJoined }: FindRoomProps): JSX.Element {
       try {
         result = JSON.parse(responseText);
         console.log("Parsed join result:", result);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (parseError) {
         console.log("Response is not JSON, treating as success");
       }
@@ -210,6 +206,7 @@ export default function FindRoom({ onRoomJoined }: FindRoomProps): JSX.Element {
       // 입력 필드 초기화
       setInviteCode("");
       setRoomInfo(null);
+      setHasSearched(false);
 
       // 성공 후 페이지 새로고침으로 ActionBar 확실히 업데이트
       setTimeout(() => {
@@ -229,6 +226,13 @@ export default function FindRoom({ onRoomJoined }: FindRoomProps): JSX.Element {
     }
   };
 
+  // 입력 변경 핸들러
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    setInviteCode(e.target.value);
+    if (searchError) setSearchError("");
+    setHasSearched(false); // 입력 변경 시 검색 상태 리셋
+  };
+
   return (
     <div className={styles.findRoom}>
       <p className={styles.title}>티밍룸 찾기</p>
@@ -239,10 +243,7 @@ export default function FindRoom({ onRoomJoined }: FindRoomProps): JSX.Element {
           <input
             className={styles.inviteInput}
             value={inviteCode}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-              setInviteCode(e.target.value);
-              if (searchError) setSearchError(""); // 입력 시 에러 메시지 제거
-            }}
+            onChange={handleInputChange}
             placeholder="초대받은 번호"
             onKeyPress={handleKeyPress}
           />
@@ -256,12 +257,7 @@ export default function FindRoom({ onRoomJoined }: FindRoomProps): JSX.Element {
           </button>
         </div>
 
-        {/* 검색 에러 메시지 */}
-        {searchError && (
-          <div className={styles.errorMessage}>
-            <p style={{ color: "#e53e3e", fontSize: "14px", marginTop: "8px" }}>{searchError}</p>
-          </div>
-        )}
+        {/* 검색 에러 메시지 - 제거됨 */}
       </div>
 
       {roomInfo && (
@@ -316,8 +312,8 @@ export default function FindRoom({ onRoomJoined }: FindRoomProps): JSX.Element {
         </div>
       )}
 
-      {/* 검색 결과가 없을 때 (에러가 아닌 경우) */}
-      {inviteCode && !roomInfo && !isSearching && !searchError && (
+      {/* 검색을 실행했고, 결과가 없을 때만 표시 */}
+      {hasSearched && !roomInfo && !isSearching && !searchError && (
         <div className={styles.noResultSection}>
           <p className={styles.noResultText}>해당하는 티밍룸을 찾을 수 없습니다.</p>
           <p className={styles.noResultSubtext}>초대 번호를 다시 확인해주세요.</p>

@@ -58,14 +58,15 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
     const backendUrl = process.env.BACKEND_URL || "http://13.125.193.243:8080";
     console.log("토큰 갱신 백엔드 URL:", backendUrl);
 
-    const response = await fetch(`${backendUrl}/api/auth/token/access-token`, {
+    // API 문서에 맞게 수정: POST /users/me/access-token
+    const response = await fetch(`${backendUrl}/users/me/access-token`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token.backendRefreshToken}`,
+        Authorization: `Bearer ${token.backendRefreshToken}`, // refreshToken을 Authorization 헤더에
       },
       body: JSON.stringify({
-        refreshToken: token.backendRefreshToken,
+        refreshToken: token.backendRefreshToken, // body에도 포함
       }),
     });
 
@@ -87,7 +88,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
     return {
       ...token,
       backendAccessToken: refreshedTokens.accessToken,
-      backendRefreshToken: token.backendRefreshToken,
+      backendRefreshToken: token.backendRefreshToken, // refreshToken은 유지
       backendTokenExpires: tokenExpiration || fallbackExpiration,
       userId: userId || token.userId,
       backendError: false,
