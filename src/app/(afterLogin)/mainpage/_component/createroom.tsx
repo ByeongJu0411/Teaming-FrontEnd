@@ -134,7 +134,7 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
     {
       id: "STANDARD",
       name: "Standard Room",
-      price: "팀원당 4841원",
+      price: "팀원당 4840원",
       description: "스타벅스 아이스 아메리카노 1개",
       icon: "/starbucks.png",
       iconClass: "starbucksIcon",
