@@ -37,26 +37,27 @@ export default function AccountSection() {
   const [newPassword, setNewPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
   const [showPasswordChange, setShowPasswordChange] = useState<boolean>(false);
+  const [passwordVerificationCode, setPasswordVerificationCode] = useState<string>("");
+  const [, setIsPasswordCodeSent] = useState<boolean>(false);
+  const [isPasswordCodeVerified, setIsPasswordCodeVerified] = useState<boolean>(false);
 
   const [newEmail, setNewEmail] = useState<string>("");
   const [emailVerificationCode, setEmailVerificationCode] = useState<string>("");
   const [isEmailCodeSent, setIsEmailCodeSent] = useState<boolean>(false);
   const [showEmailChange, setShowEmailChange] = useState<boolean>(false);
 
-  // 회원정보 조회 API 함수 - useCallback으로 메모이제이션하고 의존성을 명확히 지정
+  // 회원정보 조회 API 함수
   const fetchUserInfo = useCallback(async (): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
 
-      // 세션에서 JWT 토큰 가져오기
       const token = session?.accessToken;
 
       if (!token) {
         throw new Error("인증 토큰이 없습니다. 로그인이 필요합니다.");
       }
 
-      // 백엔드 인증 상태 확인
       if (!session?.isBackendAuthenticated) {
         if (session?.backendError?.hasError) {
           throw new Error(session.backendError.message || "백엔드 인증에 실패했습니다.");
@@ -87,7 +88,6 @@ export default function AccountSection() {
 
       const data: UserInfoResponse = await response.json();
 
-      // API 응답을 컴포넌트 상태에 맞게 변환
       setUserInfo((prev) => ({
         ...prev,
         email: data.email,
@@ -109,17 +109,15 @@ export default function AccountSection() {
     session?.backendError?.message,
   ]);
 
-  // 세션이 변경되면 회원정보 조회
   useEffect(() => {
     if (session) {
       fetchUserInfo();
     }
   }, [session, fetchUserInfo]);
 
-  // 소셜 로그인 여부 확인
   const isSocialLogin = session?.provider && ["google", "kakao", "naver"].includes(session.provider);
 
-  // 이메일 인증번호 발송 API - useCallback으로 메모이제이션
+  // 이메일 인증번호 발송 API (이메일 변경용)
   const sendEmailVerificationCode = useCallback(async (): Promise<void> => {
     try {
       const token = session?.accessToken;
@@ -170,7 +168,7 @@ export default function AccountSection() {
     }
   }, [session?.accessToken, session?.isBackendAuthenticated, newEmail]);
 
-  // 이메일 인증번호 확인 및 이메일 변경 API - useCallback으로 메모이제이션
+  // 이메일 인증번호 확인 및 이메일 변경 API
   const verifyEmailCodeAndUpdate = useCallback(async (): Promise<void> => {
     try {
       const token = session?.accessToken;
@@ -240,7 +238,6 @@ export default function AccountSection() {
         return;
       }
 
-      // 성공 시 상태 업데이트
       setUserInfo((prev) => ({ ...prev, email: newEmail }));
       setNewEmail("");
       setEmailVerificationCode("");
@@ -253,7 +250,105 @@ export default function AccountSection() {
     }
   }, [session?.accessToken, session?.isBackendAuthenticated, newEmail, emailVerificationCode]);
 
-  // 비밀번호 변경 API 함수 - useCallback으로 메모이제이션
+  // 비밀번호 변경용 인증번호 발송 API
+  const sendPasswordVerificationCode = useCallback(async (): Promise<void> => {
+    try {
+      const token = session?.accessToken;
+
+      if (!token) {
+        alert("인증 토큰이 없습니다. 로그인이 필요합니다.");
+        return;
+      }
+
+      if (!session?.isBackendAuthenticated) {
+        alert("백엔드 인증이 완료되지 않았습니다.");
+        return;
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/email/send-code`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          email: userInfo.email,
+          shouldAlreadyExists: true,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("인증번호 발송 실패:", errorText);
+
+        if (response.status === 401) {
+          alert("인증이 만료되었습니다. 다시 로그인해주세요.");
+        } else if (response.status === 400) {
+          alert("유효하지 않은 이메일 주소입니다.");
+        } else {
+          alert(`서버 오류가 발생했습니다. (${response.status})`);
+        }
+        return;
+      }
+
+      setIsPasswordCodeSent(true);
+      alert("인증번호가 발송되었습니다!");
+    } catch (error) {
+      console.error("인증번호 발송 중 오류:", error);
+      alert("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+  }, [session?.accessToken, session?.isBackendAuthenticated, userInfo.email]);
+
+  // 비밀번호 변경용 인증번호 확인 API
+  const verifyPasswordCode = useCallback(async (): Promise<void> => {
+    try {
+      const token = session?.accessToken;
+
+      if (!token) {
+        alert("인증 토큰이 없습니다. 로그인이 필요합니다.");
+        return;
+      }
+
+      if (!session?.isBackendAuthenticated) {
+        alert("백엔드 인증이 완료되지 않았습니다.");
+        return;
+      }
+
+      const verifyResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/email/verify-code`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          email: userInfo.email,
+          code: passwordVerificationCode,
+        }),
+      });
+
+      if (!verifyResponse.ok) {
+        const errorText = await verifyResponse.text();
+        console.error("인증번호 확인 실패:", errorText);
+
+        if (verifyResponse.status === 400) {
+          alert("인증번호가 올바르지 않습니다.");
+        } else if (verifyResponse.status === 401) {
+          alert("인증이 만료되었습니다. 다시 로그인해주세요.");
+        } else {
+          alert("인증번호 확인에 실패했습니다.");
+        }
+        return;
+      }
+
+      setIsPasswordCodeVerified(true);
+      alert("인증이 완료되었습니다! 비밀번호를 변경해주세요.");
+    } catch (error) {
+      console.error("인증번호 확인 중 오류:", error);
+      alert("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+  }, [session?.accessToken, session?.isBackendAuthenticated, userInfo.email, passwordVerificationCode]);
+
+  // 비밀번호 변경 API 함수
   const updatePassword = useCallback(async (): Promise<void> => {
     try {
       const token = session?.accessToken;
@@ -300,6 +395,9 @@ export default function AccountSection() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      setPasswordVerificationCode("");
+      setIsPasswordCodeSent(false);
+      setIsPasswordCodeVerified(false);
       setShowPasswordChange(false);
       alert("비밀번호가 성공적으로 변경되었습니다!");
     } catch (error) {
@@ -314,20 +412,17 @@ export default function AccountSection() {
       return;
     }
 
-    // 이메일 형식 검증
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newEmail.trim())) {
       alert("올바른 이메일 형식을 입력해주세요.");
       return;
     }
 
-    // 현재 이메일과 같은지 확인
     if (newEmail.trim() === userInfo.email) {
       alert("현재 이메일과 동일합니다. 다른 이메일을 입력해주세요.");
       return;
     }
 
-    // 이메일 인증번호 발송 API 호출
     sendEmailVerificationCode();
   };
 
@@ -342,12 +437,29 @@ export default function AccountSection() {
       return;
     }
 
-    // 인증번호 확인 및 이메일 변경 API 호출
     verifyEmailCodeAndUpdate();
   };
 
+  const handlePasswordVerificationStart = (): void => {
+    // 비밀번호 변경 버튼 클릭 시 인증번호 발송
+    sendPasswordVerificationCode();
+  };
+
+  const handlePasswordCodeVerify = (): void => {
+    if (!passwordVerificationCode.trim()) {
+      alert("인증번호를 입력해주세요.");
+      return;
+    }
+
+    if (passwordVerificationCode.length !== 6) {
+      alert("인증번호는 6자리입니다.");
+      return;
+    }
+
+    verifyPasswordCode();
+  };
+
   const handlePasswordChange = (): void => {
-    // 입력값 유효성 검사
     if (!currentPassword.trim()) {
       alert("현재 비밀번호를 입력해주세요.");
       return;
@@ -378,11 +490,9 @@ export default function AccountSection() {
       return;
     }
 
-    // 비밀번호 변경 API 호출
     updatePassword();
   };
 
-  // 로딩 상태
   if (loading) {
     return (
       <div className={styles.accountSection}>
@@ -394,7 +504,6 @@ export default function AccountSection() {
     );
   }
 
-  // 에러 상태
   if (error) {
     return (
       <div className={styles.accountSection}>
@@ -417,7 +526,6 @@ export default function AccountSection() {
         <h3 className={styles.sectionTitle}>계정 설정</h3>
 
         {isSocialLogin ? (
-          // 소셜 로그인 시 안내 메시지 표시
           <div className={styles.socialLoginNotice}>
             <div className={styles.socialLoginContent}>
               <h4 className={styles.socialLoginTitle}>
@@ -433,7 +541,6 @@ export default function AccountSection() {
             </div>
           </div>
         ) : (
-          // 일반 로그인 시 기존 설정 항목들 표시
           <>
             <div className={styles.settingItem}>
               <div className={styles.settingInfo}>
@@ -510,36 +617,70 @@ export default function AccountSection() {
               </div>
               <button
                 className={styles.settingBtn}
-                onClick={() => setShowPasswordChange(!showPasswordChange)}
+                onClick={() => {
+                  setShowPasswordChange(!showPasswordChange);
+                  if (!showPasswordChange) {
+                    // 비밀번호 변경 폼을 열 때 인증번호 발송
+                    handlePasswordVerificationStart();
+                  }
+                }}
                 type="button"
               >
                 변경
               </button>
             </div>
-
             {showPasswordChange && (
               <div className={styles.passwordChangeForm}>
-                <input
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="현재 비밀번호"
-                  className={styles.passwordInput}
-                />
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="새 비밀번호 (8자 이상)"
-                  className={styles.passwordInput}
-                />
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="비밀번호 재확인"
-                  className={styles.passwordInput}
-                />
+                {!isPasswordCodeVerified ? (
+                  // 인증번호 입력 단계
+                  <div className={styles.verificationSection}>
+                    <p className={styles.verificationInfo}>
+                      가입하신 이메일({userInfo.email})로 인증번호를 발송했습니다.
+                    </p>
+                    <input
+                      type="text"
+                      value={passwordVerificationCode}
+                      onChange={(e) => setPasswordVerificationCode(e.target.value)}
+                      placeholder="인증번호 6자리"
+                      maxLength={6}
+                      className={styles.verificationInput}
+                    />
+                    <button
+                      className={styles.confirmBtn}
+                      onClick={handlePasswordCodeVerify}
+                      disabled={!passwordVerificationCode}
+                      type="button"
+                    >
+                      인증 확인
+                    </button>
+                  </div>
+                ) : (
+                  // 비밀번호 변경 단계
+                  <>
+                    <input
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="현재 비밀번호"
+                      className={styles.passwordInput}
+                    />
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="새 비밀번호 (8자 이상)"
+                      className={styles.passwordInput}
+                    />
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="비밀번호 재확인"
+                      className={styles.passwordInput}
+                    />
+                  </>
+                )}
+
                 <div className={styles.passwordActions}>
                   <button
                     className={styles.cancelBtn}
@@ -548,14 +689,19 @@ export default function AccountSection() {
                       setCurrentPassword("");
                       setNewPassword("");
                       setConfirmPassword("");
+                      setPasswordVerificationCode("");
+                      setIsPasswordCodeSent(false);
+                      setIsPasswordCodeVerified(false);
                     }}
                     type="button"
                   >
                     취소
                   </button>
-                  <button className={styles.confirmBtn} onClick={handlePasswordChange} type="button">
-                    변경하기
-                  </button>
+                  {isPasswordCodeVerified && (
+                    <button className={styles.confirmBtn} onClick={handlePasswordChange} type="button">
+                      변경하기
+                    </button>
+                  )}
                 </div>
               </div>
             )}
