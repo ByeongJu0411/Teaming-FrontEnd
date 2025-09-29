@@ -80,6 +80,7 @@ interface ChatRoomProps {
     type?: "BASIC" | "STANDARD" | "ELITE" | "DEMO";
     role?: "LEADER" | "MEMBER";
     roomImageUrl?: string;
+    paymentStatus?: "NOT_PAID" | "PAID";
   };
   onRoomUpdate?: (roomId: string, unreadCount: number) => void;
   onRefreshRoom?: () => void;
@@ -127,7 +128,7 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
   const [message, setMessage] = useState<string>("");
   const [displayMessages, setDisplayMessages] = useState<ChatMessageType[]>([]);
   const [hoveredMessage, setHoveredMessage] = useState<number | null>(null);
-  const [showPayment, setShowPayment] = useState<boolean>(true);
+  const [showPayment, setShowPayment] = useState<boolean>(roomData.paymentStatus === "NOT_PAID");
   const [isSuccessCompleted, setIsSuccessCompleted] = useState<boolean>(false);
   const [showExitModal, setShowExitModal] = useState<boolean>(false);
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
@@ -200,11 +201,7 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
 
   const handleRoomSuccess = useCallback((event: RoomSuccessEvent) => {
     console.log("팀플 성공 알림 수신:", event);
-
-    // 모든 멤버에게 성공 모달 표시
     setShowSuccessModal(true);
-
-    // 모든 멤버에게 나가기 버튼 표시
     setIsSuccessCompleted(true);
   }, []);
 
@@ -264,6 +261,10 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
       setMembers(roomData.members);
     }
   }, [roomData.members]);
+
+  useEffect(() => {
+    setShowPayment(roomData.paymentStatus === "NOT_PAID");
+  }, [roomData.paymentStatus]);
 
   const targetMemberCount: number = roomData.memberCount || members.length || 0;
 

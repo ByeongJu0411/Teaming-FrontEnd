@@ -18,4 +18,5 @@ export interface Room {
   type?: "BASIC" | "STANDARD" | "ELITE" | "DEMO";
   role?: "LEADER" | "MEMBER";
   roomImageUrl?: string;
+  paymentStatus?: "NOT_PAID" | "PAID";
 }
