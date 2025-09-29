@@ -142,7 +142,7 @@ export default function AccountSection() {
         },
         body: JSON.stringify({
           email: newEmail,
-          shouldAlreadyExists: true,
+          shouldAlreadyExists: false,
         }),
       });
 
