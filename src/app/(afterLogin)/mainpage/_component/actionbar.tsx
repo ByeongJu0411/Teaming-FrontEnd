@@ -232,6 +232,7 @@ export default function ActionBar({
           type: room.type || "BASIC",
           role: room.role || "MEMBER",
           roomImageUrl: roomImageUrl,
+          success: room.success || false,
         };
       });
 

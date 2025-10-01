@@ -19,4 +19,5 @@ export interface Room {
   role?: "LEADER" | "MEMBER";
   roomImageUrl?: string;
   paymentStatus?: "NOT_PAID" | "PAID";
+  success: boolean;
 }

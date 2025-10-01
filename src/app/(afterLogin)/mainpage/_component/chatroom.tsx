@@ -81,6 +81,7 @@ interface ChatRoomProps {
     role?: "LEADER" | "MEMBER";
     roomImageUrl?: string;
     paymentStatus?: "NOT_PAID" | "PAID";
+    success?: boolean; // ✅ success 필드 추가
   };
   onRoomUpdate?: (roomId: string, unreadCount: number) => void;
   onRefreshRoom?: () => void;
@@ -129,10 +130,12 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
   const [displayMessages, setDisplayMessages] = useState<ChatMessageType[]>([]);
   const [hoveredMessage, setHoveredMessage] = useState<number | null>(null);
   const [showPayment, setShowPayment] = useState<boolean>(roomData.paymentStatus === "NOT_PAID");
-  const [isSuccessCompleted, setIsSuccessCompleted] = useState<boolean>(false);
   const [showExitModal, setShowExitModal] = useState<boolean>(false);
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
   const [members, setMembers] = useState<Member[]>(roomData.members || []);
+
+  // ✅ API success 필드 기반으로 상태 초기화
+  const [isSuccessCompleted, setIsSuccessCompleted] = useState<boolean>(roomData.success || false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -149,6 +152,13 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
 
   const token = session?.accessToken || "";
   const roomId = roomData.id;
+
+  console.log("ChatRoom 초기화:", {
+    roomId: roomData.id,
+    roomSuccess: roomData.success,
+    isSuccessCompleted: isSuccessCompleted,
+    role: roomData.role,
+  });
 
   const convertWSMessageToDisplay = useCallback((wsMsg: WSChatMessage): ChatMessageType => {
     return {
@@ -199,11 +209,19 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
     });
   }, []);
 
-  const handleRoomSuccess = useCallback((event: RoomSuccessEvent) => {
-    console.log("팀플 성공 알림 수신:", event);
-    setShowSuccessModal(true);
-    setIsSuccessCompleted(true);
-  }, []);
+  const handleRoomSuccess = useCallback(
+    (event: RoomSuccessEvent) => {
+      console.log("팀플 성공 알림 수신:", event);
+      setShowSuccessModal(true);
+      setIsSuccessCompleted(true);
+
+      // ✅ 부모 컴포넌트에 방 정보 새로고침 요청 (success 상태 업데이트를 위해)
+      if (onRefreshRoom) {
+        onRefreshRoom();
+      }
+    },
+    [onRefreshRoom]
+  );
 
   const { isConnected, sendMessage: wsSendMessage } = useWebSocket({
     roomId,
@@ -265,6 +283,12 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
   useEffect(() => {
     setShowPayment(roomData.paymentStatus === "NOT_PAID");
   }, [roomData.paymentStatus]);
+
+  // ✅ roomData.success 변경 시 상태 업데이트
+  useEffect(() => {
+    console.log("roomData.success 변경됨:", roomData.success);
+    setIsSuccessCompleted(roomData.success || false);
+  }, [roomData.success]);
 
   const targetMemberCount: number = roomData.memberCount || members.length || 0;
 
@@ -486,7 +510,13 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
       });
 
       if (response.ok) {
+        console.log("팀플 성공 API 호출 성공");
         setIsSuccessCompleted(true);
+
+        // ✅ 방 정보 새로고침 요청 (success 상태 업데이트를 위해)
+        if (onRefreshRoom) {
+          onRefreshRoom();
+        }
       } else {
         const errorText = await response.text();
         console.error("팀플 성공 처리 실패:", errorText);
@@ -746,6 +776,7 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
             </div>
           </div>
 
+          {/* ✅ 팀플 성공 버튼: 팀장이고 아직 성공하지 않은 경우에만 표시 */}
           {!isSuccessCompleted && isLeader && (
             <div className={styles.successButton} onClick={handleSuccess}>
               <MdCelebration className={styles.successIcon} />
@@ -753,6 +784,7 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
             </div>
           )}
 
+          {/* ✅ 나가기 버튼: 팀플이 성공한 경우 모든 멤버에게 표시 */}
           {isSuccessCompleted && (
             <div className={styles.exitButton} onClick={handleExit}>
               <ImExit className={styles.exitIcon} />
