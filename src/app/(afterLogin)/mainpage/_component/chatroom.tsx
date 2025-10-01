@@ -81,7 +81,7 @@ interface ChatRoomProps {
     role?: "LEADER" | "MEMBER";
     roomImageUrl?: string;
     paymentStatus?: "NOT_PAID" | "PAID";
-    success?: boolean; // ✅ success 필드 추가
+    success?: boolean; // success 필드 추가
   };
   onRoomUpdate?: (roomId: string, unreadCount: number) => void;
   onRefreshRoom?: () => void;
@@ -132,9 +132,10 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
   const [showPayment, setShowPayment] = useState<boolean>(roomData.paymentStatus === "NOT_PAID");
   const [showExitModal, setShowExitModal] = useState<boolean>(false);
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
+  const [showLeaderOnlyModal, setShowLeaderOnlyModal] = useState<boolean>(false);
   const [members, setMembers] = useState<Member[]>(roomData.members || []);
 
-  // ✅ API success 필드 기반으로 상태 초기화
+  // API success 필드 기반으로 상태 초기화
   const [isSuccessCompleted, setIsSuccessCompleted] = useState<boolean>(roomData.success || false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -215,7 +216,7 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
       setShowSuccessModal(true);
       setIsSuccessCompleted(true);
 
-      // ✅ 부모 컴포넌트에 방 정보 새로고침 요청 (success 상태 업데이트를 위해)
+      // 부모 컴포넌트에 방 정보 새로고침 요청 (success 상태 업데이트를 위해)
       if (onRefreshRoom) {
         onRefreshRoom();
       }
@@ -284,7 +285,7 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
     setShowPayment(roomData.paymentStatus === "NOT_PAID");
   }, [roomData.paymentStatus]);
 
-  // ✅ roomData.success 변경 시 상태 업데이트
+  // roomData.success 변경 시 상태 업데이트
   useEffect(() => {
     console.log("roomData.success 변경됨:", roomData.success);
     setIsSuccessCompleted(roomData.success || false);
@@ -496,6 +497,15 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
 
   const isLeader = roomData.role === "LEADER";
 
+  // 과제 생성하기 클릭 핸들러
+  const handleMissionClick = () => {
+    if (isLeader) {
+      setMissionModalStatus(!missionModalStatus);
+    } else {
+      setShowLeaderOnlyModal(true);
+    }
+  };
+
   const handleSuccess = async (): Promise<void> => {
     const confirmSuccess = window.confirm("팀플을 성공으로 마무리하시겠습니까?");
     if (!confirmSuccess) return;
@@ -513,7 +523,7 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
         console.log("팀플 성공 API 호출 성공");
         setIsSuccessCompleted(true);
 
-        // ✅ 방 정보 새로고침 요청 (success 상태 업데이트를 위해)
+        // 방 정보 새로고침 요청 (success 상태 업데이트를 위해)
         if (onRefreshRoom) {
           onRefreshRoom();
         }
@@ -532,24 +542,70 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
 
   const handleConfirmExit = async (): Promise<void> => {
     try {
+      console.log("티밍룸 나가기 시도:", {
+        roomId: roomData.id,
+        token: token ? "존재함" : "없음",
+        url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/rooms/${roomData.id}`,
+      });
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/rooms/${roomData.id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
       });
 
+      console.log("나가기 API 응답:", {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+      });
+
       if (response.ok) {
+        console.log("티밍룸 나가기 성공");
         alert("티밍룸에서 나갔습니다.");
         window.location.href = "/mainpage";
       } else {
         const errorText = await response.text();
-        console.error("티밍룸 나가기 실패:", errorText);
-        alert("티밍룸 나가기 중 오류가 발생했습니다.");
+        console.error("티밍룸 나가기 실패:", {
+          status: response.status,
+          errorText: errorText,
+        });
+
+        // 500 에러의 경우 서버 문제이므로 사용자에게 다른 메시지 제공
+        if (response.status === 500) {
+          const confirmForceExit = window.confirm(
+            "서버에서 일시적인 문제가 발생했습니다.\n" +
+              "그래도 메인페이지로 이동하시겠습니까?\n" +
+              "(방에서 완전히 나가지지 않을 수 있습니다)"
+          );
+
+          if (confirmForceExit) {
+            window.location.href = "/mainpage";
+          }
+        } else if (response.status === 401) {
+          alert("인증이 만료되었습니다. 다시 로그인해주세요.");
+          window.location.href = "/login";
+        } else if (response.status === 403) {
+          alert("방 나가기 권한이 없습니다.");
+        } else if (response.status === 404) {
+          alert("존재하지 않는 방입니다. 메인페이지로 이동합니다.");
+          window.location.href = "/mainpage";
+        } else {
+          alert(`티밍룸 나가기 중 오류가 발생했습니다. (${response.status})\n백엔드 개발자에게 문의해주세요.`);
+        }
       }
     } catch (error) {
       console.error("티밍룸 나가기 API 호출 오류:", error);
-      alert("네트워크 오류가 발생했습니다.");
+
+      const confirmNetworkError = window.confirm(
+        "네트워크 오류가 발생했습니다.\n" + "그래도 메인페이지로 이동하시겠습니까?"
+      );
+
+      if (confirmNetworkError) {
+        window.location.href = "/mainpage";
+      }
     }
   };
 
@@ -768,7 +824,7 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
             <div className={styles.item} onClick={() => setDataRoomModalStatus(!dataRoomModalStatus)}>
               📋 자료실
             </div>
-            <div className={styles.item} onClick={() => setMissionModalStatus(!missionModalStatus)}>
+            <div className={styles.item} onClick={handleMissionClick}>
               ➕ 과제 생성하기
             </div>
             <div className={styles.item} onClick={() => setAssignmentModalStatus(!assignmentModalStatus)}>
@@ -776,7 +832,7 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
             </div>
           </div>
 
-          {/* ✅ 팀플 성공 버튼: 팀장이고 아직 성공하지 않은 경우에만 표시 */}
+          {/* 팀플 성공 버튼: 팀장이고 아직 성공하지 않은 경우에만 표시 */}
           {!isSuccessCompleted && isLeader && (
             <div className={styles.successButton} onClick={handleSuccess}>
               <MdCelebration className={styles.successIcon} />
@@ -784,7 +840,7 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
             </div>
           )}
 
-          {/* ✅ 나가기 버튼: 팀플이 성공한 경우 모든 멤버에게 표시 */}
+          {/* 나가기 버튼: 팀플이 성공한 경우 모든 멤버에게 표시 */}
           {isSuccessCompleted && (
             <div className={styles.exitButton} onClick={handleExit}>
               <ImExit className={styles.exitIcon} />
@@ -853,6 +909,28 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
           roomId={Number(roomData.id)}
           members={members}
         />
+      )}
+
+      {/* 팀장 전용 기능 안내 모달 */}
+      {showLeaderOnlyModal && (
+        <div className={styles.exitModalOverlay} onClick={() => setShowLeaderOnlyModal(false)}>
+          <div onClick={(e) => e.stopPropagation()}>
+            <SpotlightCard className={styles.exitModalCard} spotlightColor="rgba(63, 63, 212, 0.3)">
+              <div className={styles.exitModalContent}>
+                <h2 className={styles.exitModalTitle}>👑 팀장 전용 기능</h2>
+                <p className={styles.exitModalDescription}>
+                  과제 생성은 팀장만 가능합니다.{"\n"}
+                  팀장에게 과제 생성을 요청해주세요.
+                </p>
+                <div className={styles.exitModalButtons}>
+                  <button className={styles.exitModalConfirm} onClick={() => setShowLeaderOnlyModal(false)}>
+                    확인
+                  </button>
+                </div>
+              </div>
+            </SpotlightCard>
+          </div>
+        </div>
       )}
 
       {showSuccessModal && (
