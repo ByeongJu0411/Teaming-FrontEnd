@@ -30,6 +30,22 @@ const generateAvatar = (name: string): string => {
   return avatars[index];
 };
 
+// 오늘 날짜를 기본값으로 설정하는 함수
+const getTodayDate = () => {
+  const today = new Date();
+  const year = today.getFullYear().toString();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return {
+    year,
+    month,
+    day,
+    hour: "23",
+    minute: "59",
+  };
+};
+
 const CreateMission = ({ setModal, members = [], roomId, onAssignmentCreated }: ModalProps) => {
   const { data: session } = useSession();
 
@@ -37,13 +53,7 @@ const CreateMission = ({ setModal, members = [], roomId, onAssignmentCreated }: 
   const [missionDescription, setMissionDescription] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [dueDate, setDueDate] = useState({
-    year: "2025",
-    month: "01",
-    day: "01",
-    hour: "23",
-    minute: "59",
-  });
+  const [dueDate, setDueDate] = useState(getTodayDate()); // 오늘 날짜로 초기화
 
   const preventOffModal = (event: React.MouseEvent) => {
     event.stopPropagation();
