@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { FiX, FiFile } from "react-icons/fi";
+import { useSession } from "next-auth/react";
 import styles from "./ViewSubmissionModal.module.css";
 
 interface Submission {
@@ -11,6 +12,7 @@ interface Submission {
   submissionData?: {
     text: string;
     files: {
+      fileId: string; // 파일 ID 추가
       name: string;
       size: number;
       url?: string;
@@ -25,6 +27,8 @@ interface ViewSubmissionModalProps {
 }
 
 const ViewSubmissionModal: React.FC<ViewSubmissionModalProps> = ({ submission, isOpen, onClose }) => {
+  const { data: session } = useSession();
+
   if (!isOpen || !submission) return null;
 
   const formatDate = (dateString: string) => {
@@ -44,6 +48,69 @@ const ViewSubmissionModal: React.FC<ViewSubmissionModalProps> = ({ submission, i
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
+  const handleDownloadFile = async (fileId: string, fileName: string) => {
+    try {
+      if (!session?.accessToken) {
+        alert("인증이 필요합니다. 로그인 상태를 확인해주세요.");
+        return;
+      }
+
+      console.log("파일 다운로드 시작:", { fileId, fileName });
+
+      // 스웨거 API 호출 - Presigned GET URL 발급
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080"}/files/download-url/${fileId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.accessToken}`,
+          },
+        }
+      );
+
+      console.log("API 응답 상태:", response.status);
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("인증이 만료되었습니다. 다시 로그인해주세요.");
+        } else if (response.status === 403) {
+          throw new Error("파일 다운로드 권한이 없습니다.");
+        } else if (response.status === 404) {
+          throw new Error("파일을 찾을 수 없습니다.");
+        } else {
+          const errorText = await response.text();
+          console.error("API 오류 응답:", errorText);
+          throw new Error(`파일 다운로드 중 오류가 발생했습니다. (${response.status})`);
+        }
+      }
+
+      const result = await response.json();
+      console.log("다운로드 URL 발급 성공:", result);
+
+      // 발급받은 URL로 파일 다운로드
+      if (result.url) {
+        // 새 창에서 다운로드 (브라우저에서 직접 다운로드)
+        const link = document.createElement("a");
+        link.href = result.url;
+        link.download = fileName;
+        link.target = "_blank";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        console.log("파일 다운로드 완료:", fileName);
+      } else {
+        throw new Error("다운로드 URL을 받지 못했습니다.");
+      }
+    } catch (error) {
+      console.error("파일 다운로드 실패:", error);
+      alert(
+        `파일 다운로드에 실패했습니다:\n${error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다."}`
+      );
+    }
   };
 
   return (
@@ -88,7 +155,12 @@ const ViewSubmissionModal: React.FC<ViewSubmissionModalProps> = ({ submission, i
                           <span className={styles.fileName}>{file.name}</span>
                           <span className={styles.fileSize}>({formatFileSize(file.size)})</span>
                         </div>
-                        <button className={styles.downloadButton}>다운로드</button>
+                        <button
+                          className={styles.downloadButton}
+                          onClick={() => handleDownloadFile(file.fileId, file.name)}
+                        >
+                          다운로드
+                        </button>
                       </div>
                     ))}
                   </div>
