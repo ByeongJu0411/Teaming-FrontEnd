@@ -23,6 +23,7 @@ interface Assignment {
     submissionData?: {
       text: string;
       files: {
+        fileId: string; // ✅ fileId 필드 추가
         name: string;
         size: number;
         url?: string;
@@ -246,7 +247,14 @@ const AssignmentDetail: React.FC<AssignmentDetailProps> = ({
                 <div
                   key={submission.memberId}
                   className={`${styles.submissionItem} ${submission.status === "제출완료" ? styles.clickable : ""}`}
-                  onClick={() => onViewSubmission(submission)}
+                  onClick={() => {
+                    // 디버깅용 로그
+                    console.log("선택된 submission 데이터:", submission);
+                    if (submission.submissionData?.files) {
+                      console.log("파일 데이터:", submission.submissionData.files);
+                    }
+                    onViewSubmission(submission);
+                  }}
                 >
                   <div className={styles.submissionMember}>
                     <div className={styles.memberAvatar}>

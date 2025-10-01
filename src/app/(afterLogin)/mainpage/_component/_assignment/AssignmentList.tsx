@@ -41,6 +41,7 @@ interface SubmissionStatus {
   submissionData?: {
     text: string;
     files: {
+      fileId: string;
       name: string;
       size: number;
       url?: string;
@@ -116,6 +117,7 @@ const AssignmentList: React.FC<AssignmentListProps> = ({
             submissionData: {
               text: memberSubmission.description,
               files: memberSubmission.files.map((file) => ({
+                fileId: file.fileId.toString(),
                 name: file.fileName,
                 size: file.fileSize,
                 url: undefined,

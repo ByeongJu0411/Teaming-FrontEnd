@@ -32,7 +32,7 @@ interface ModalProps {
   members: RoomMember[];
 }
 
-// 컴포넌트에서 사용할 타입
+// 컴포넌트에서 사용할 타입 - fileId 필드 추가
 interface Assignment {
   id: string;
   title: string;
@@ -51,6 +51,7 @@ interface Assignment {
     submissionData?: {
       text: string;
       files: {
+        fileId: string; // ✅ fileId 필드 추가
         name: string;
         size: number;
         url?: string;
@@ -78,22 +79,26 @@ const AssignmentRoom = ({ setModal, roomId, members }: ModalProps) => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [, setIsLoading] = useState(false);
 
-  // ActionBar에서 전달받은 avatarUrl 우선 사용
+  // ActionBar에서 전달받은 avatarUrl 우선 사용 - 안전성 검사 추가
   const convertedMembers: Member[] = Array.isArray(members)
     ? members.map((member: RoomMember) => {
+        // 안전한 기본값 처리
+        const memberId = member?.memberId ?? 0;
+        const memberName = member?.name || "알 수 없는 사용자";
+
         // avatarUrl이 있으면 우선 사용, 없으면 이모지
-        const avatar = member.avatarUrl || generateAvatar(member.name || "Unknown");
+        const avatar = member?.avatarUrl || generateAvatar(memberName);
 
         console.log("AssignmentRoom - 멤버 변환:", {
-          memberId: member.memberId,
-          name: member.name,
-          avatarUrl: member.avatarUrl,
+          memberId: memberId,
+          name: memberName,
+          avatarUrl: member?.avatarUrl,
           finalAvatar: avatar,
         });
 
         return {
-          id: member.memberId.toString(),
-          name: member.name || "알 수 없는 사용자",
+          id: memberId.toString(),
+          name: memberName,
           avatar: avatar,
         };
       })
@@ -120,15 +125,20 @@ const AssignmentRoom = ({ setModal, roomId, members }: ModalProps) => {
     console.log("- 방 멤버들:", members);
 
     let currentUserId = null;
-    const currentMember = members.find(
-      (member) => member.name === currentUserName || member.memberId.toString() === session?.user?.id?.toString()
-    );
 
-    if (currentMember) {
-      currentUserId = currentMember.memberId.toString();
-      console.log("- 찾은 현재 사용자 ID:", currentUserId);
-    } else {
-      console.log("- 현재 사용자를 방 멤버에서 찾을 수 없음");
+    // 안전한 멤버 찾기
+    if (Array.isArray(members) && members.length > 0) {
+      const currentMember = members.find(
+        (member) =>
+          member && (member.name === currentUserName || member.memberId.toString() === session?.user?.id?.toString())
+      );
+
+      if (currentMember) {
+        currentUserId = currentMember.memberId.toString();
+        console.log("- 찾은 현재 사용자 ID:", currentUserId);
+      } else {
+        console.log("- 현재 사용자를 방 멤버에서 찾을 수 없음");
+      }
     }
 
     console.log("- assignment.submissions:", assignment.submissions);
@@ -139,7 +149,8 @@ const AssignmentRoom = ({ setModal, roomId, members }: ModalProps) => {
       return false;
     }
 
-    const isAssigned = assignment.assignedMembers.includes(currentUserId);
+    // 과제 할당 여부 확인
+    const isAssigned = Array.isArray(assignment.assignedMembers) && assignment.assignedMembers.includes(currentUserId);
     console.log("- 현재 사용자가 과제에 할당됨:", isAssigned);
 
     if (!isAssigned) {
@@ -147,7 +158,10 @@ const AssignmentRoom = ({ setModal, roomId, members }: ModalProps) => {
       return false;
     }
 
-    const mySubmission = assignment.submissions.find((s) => s.memberId === currentUserId);
+    // 제출 상태 확인
+    const mySubmission = Array.isArray(assignment.submissions)
+      ? assignment.submissions.find((s) => s && s.memberId === currentUserId)
+      : null;
     console.log("- 내 제출 정보:", mySubmission);
 
     const canSubmitResult = mySubmission?.status === "대기";
@@ -157,17 +171,22 @@ const AssignmentRoom = ({ setModal, roomId, members }: ModalProps) => {
   };
 
   const handleViewSubmission = (submission: Assignment["submissions"][0]) => {
-    if (submission.status === "제출완료" && submission.submissionData) {
+    if (submission && submission.status === "제출완료" && submission.submissionData) {
+      console.log("ViewSubmission 열기:", submission);
       setViewingSubmission(submission);
       setShowViewModal(true);
+    } else {
+      console.log("제출 데이터가 없거나 아직 제출되지 않음:", submission);
     }
   };
 
   const handleAssignmentSelect = (assignment: Assignment | null) => {
+    console.log("과제 선택됨:", assignment?.id);
     setSelectedAssignment(assignment);
   };
 
   const handleSubmitClick = () => {
+    console.log("과제 제출 모달 열기");
     setShowSubmissionModal(true);
   };
 
@@ -178,7 +197,25 @@ const AssignmentRoom = ({ setModal, roomId, members }: ModalProps) => {
       setSelectedAssignment(updatedAssignment);
     }
 
+    // 목록 새로고침 트리거
     setRefreshTrigger((prev) => prev + 1);
+  };
+
+  const handleSubmissionSuccess = () => {
+    console.log("과제 제출 성공, 목록 새로고침");
+    setShowSubmissionModal(false);
+    setRefreshTrigger((prev) => prev + 1);
+  };
+
+  const handleViewModalClose = () => {
+    console.log("ViewSubmission 모달 닫기");
+    setShowViewModal(false);
+    setViewingSubmission(null);
+  };
+
+  const handleSubmissionModalClose = () => {
+    console.log("Submission 모달 닫기");
+    setShowSubmissionModal(false);
   };
 
   useEffect(() => {
@@ -187,6 +224,26 @@ const AssignmentRoom = ({ setModal, roomId, members }: ModalProps) => {
       document.body.style.overflow = "auto";
     };
   }, []);
+
+  // 에러 바운더리 역할
+  if (!Array.isArray(members)) {
+    console.error("members가 배열이 아닙니다:", members);
+    return (
+      <div onClick={setModal} className={styles.modalBackground}>
+        <div onClick={preventOffModal} className={styles.modal}>
+          <div className={styles.modalHeader}>
+            <button onClick={setModal} className={styles.backButton}>
+              <IoChevronBack size={24} />
+            </button>
+            <h2 className={styles.modalTitle}>과제 확인하기</h2>
+          </div>
+          <div className={styles.modalBody}>
+            <div style={{ padding: "20px", textAlign: "center" }}>멤버 정보를 불러오는 중 오류가 발생했습니다.</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div onClick={setModal} className={styles.modalBackground}>
@@ -218,28 +275,24 @@ const AssignmentRoom = ({ setModal, roomId, members }: ModalProps) => {
           />
         </div>
 
+        {/* 과제 제출 모달 */}
         {selectedAssignment && (
           <SubmissionModal
             assignment={selectedAssignment}
             isOpen={showSubmissionModal}
-            onClose={() => setShowSubmissionModal(false)}
+            onClose={handleSubmissionModalClose}
             onSubmit={handleSubmitAssignment}
             submissionText={submissionText}
             setSubmissionText={setSubmissionText}
             submissionFiles={submissionFiles}
             setSubmissionFiles={setSubmissionFiles}
             roomId={roomId}
-            onSuccess={() => {
-              setRefreshTrigger((prev) => prev + 1);
-            }}
+            onSuccess={handleSubmissionSuccess}
           />
         )}
 
-        <ViewSubmissionModal
-          submission={viewingSubmission}
-          isOpen={showViewModal}
-          onClose={() => setShowViewModal(false)}
-        />
+        {/* 제출 내용 보기 모달 */}
+        <ViewSubmissionModal submission={viewingSubmission} isOpen={showViewModal} onClose={handleViewModalClose} />
       </div>
     </div>
   );
