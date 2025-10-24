@@ -35,6 +35,7 @@ interface RoomData {
   success: boolean;
   members: Member[];
   avatarUrl: string;
+  paymentStatus: "PAID" | "NOT_PAID"; // 추가됨
 }
 
 // 사용자 정보 API 응답 타입
@@ -233,6 +234,7 @@ export default function ActionBar({
           role: room.role || "MEMBER",
           roomImageUrl: roomImageUrl,
           success: room.success || false,
+          paymentStatus: room.paymentStatus || "NOT_PAID", // 추가됨
         };
       });
 
@@ -328,7 +330,10 @@ export default function ActionBar({
 
   const handleRoomClick = (room: Room): void => {
     console.log("ActionBar: 방 선택됨:", room.name);
+    console.log("ActionBar: 결제 상태:", room.paymentStatus); // 추가됨
     console.log("ActionBar: 전달되는 멤버 정보:", room.members);
+
+    // 결제 상태와 함께 방으로 입장 (결제 모달은 방 내부에서 처리)
     onRoomSelect(room);
     setSelectedItem(null);
   };
