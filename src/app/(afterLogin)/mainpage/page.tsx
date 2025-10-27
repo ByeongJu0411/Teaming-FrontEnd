@@ -1,8 +1,8 @@
 "use client";
 
-import { JSX, useState, useEffect, useRef, useCallback } from "react";
+import { JSX, useState, useEffect, useRef } from "react";
 import { useSession, signOut } from "next-auth/react";
-import { Room, Member } from "@/types/room";
+import { Room } from "@/types/room";
 import { useRouter } from "next/navigation";
 
 // 방 타입 정보 인터페이스
@@ -121,69 +121,12 @@ export default function MainPage(): JSX.Element {
     setRefreshTrigger((prev) => prev + 1);
   };
 
-  // 선택된 방 정보 새로고침 함수
-  const refreshSelectedRoom = useCallback(async () => {
-    if (!selectedRoom || !session?.accessToken) {
-      console.log("MainPage: 방 정보 새로고침 불가 (방 미선택 또는 토큰 없음)");
-      return;
-    }
-
-    try {
-      console.log("MainPage: 방 정보 새로고침 시작:", selectedRoom.id);
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080"}/rooms/${selectedRoom.id}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${session.accessToken}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        console.error("MainPage: 방 정보 조회 실패:", response.status);
-        return;
-      }
-
-      const data = await response.json();
-      console.log("MainPage: 방 정보 조회 성공:", data);
-
-      // 멤버 정보에 avatarUrl 추가
-      const membersWithAvatarUrl = data.members.map((member: Member) => ({
-        ...member,
-        avatarUrl: member.avatarUrl || "",
-      }));
-
-      const roomImageUrl = data.avatarUrl || "/good_space1.jpg";
-
-      // 방 정보 업데이트
-      setSelectedRoom({
-        ...selectedRoom,
-        members: membersWithAvatarUrl,
-        name: data.title || selectedRoom.name,
-        type: data.type || selectedRoom.type,
-        role: data.role || selectedRoom.role,
-        memberCount: data.memberCount || selectedRoom.memberCount,
-        roomImageUrl: roomImageUrl,
-        paymentStatus: data.paymentStatus || selectedRoom.paymentStatus,
-      });
-
-      console.log("MainPage: 방 정보 업데이트 완료");
-    } catch (error) {
-      console.error("MainPage: 방 정보 새로고침 오류:", error);
-    }
-  }, [selectedRoom, session?.accessToken]);
-
   // ✅ 결제 완료 핸들러
-  const handlePaymentComplete = async () => {
+  const handlePaymentComplete = () => {
     console.log("MainPage: 결제 완료됨");
     setShowPaymentModal(false);
 
-    // 방 정보 새로고침 (paymentStatus 업데이트)
-    await refreshSelectedRoom();
-
-    // ActionBar의 방 목록도 새로고침
+    // ActionBar의 방 목록 새로고침
     setRefreshTrigger((prev) => prev + 1);
   };
 
@@ -244,7 +187,13 @@ export default function MainPage(): JSX.Element {
 
     // ✅ 결제가 완료된 경우에만 ChatRoom 렌더링
     if (selectedRoom) {
-      return <ChatRoom roomData={selectedRoom} onRoomUpdate={handleRoomUpdate} onRefreshRoom={refreshSelectedRoom} />;
+      return (
+        <ChatRoom
+          roomData={selectedRoom}
+          onRoomUpdate={handleRoomUpdate}
+          // onRefreshRoom prop 제거
+        />
+      );
     }
 
     switch (selectedMenu) {
