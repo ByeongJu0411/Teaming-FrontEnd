@@ -359,6 +359,8 @@ export default function ActionBar({
     console.log("ActionBar: 방 타입 정보:", room.roomTypeInfo);
     console.log("ActionBar: 멤버 수:", room.memberCount);
     console.log("ActionBar: 전달되는 멤버 정보:", room.members);
+
+    // 결제 상태와 함께 방으로 입장 (결제 모달은 방 내부에서 처리)
     onRoomSelect(room);
     setSelectedItem(null);
   };
