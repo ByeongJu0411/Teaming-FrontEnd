@@ -466,7 +466,11 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
     if (!confirmSuccess) return;
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/rooms/${roomData.id}/success`, {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080";
+
+      // 1️⃣ 첫 번째 API: 팀플 성공 처리
+      console.log("1️⃣ 팀플 성공 API 호출 시작");
+      const successResponse = await fetch(`${backendUrl}/rooms/${roomData.id}/success`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -474,20 +478,44 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
         },
       });
 
-      if (response.ok) {
-        console.log("팀플 성공 API 호출 성공");
-        setIsSuccessCompleted(true);
-
-        // 방 정보 새로고침 요청 (success 상태 업데이트를 위해)
-        if (onRefreshRoom) {
-          onRefreshRoom();
-        }
-      } else {
-        const errorText = await response.text();
-        console.error("팀플 성공 처리 실패:", errorText);
+      if (!successResponse.ok) {
+        const errorText = await successResponse.text();
+        console.error("❌ 팀플 성공 처리 실패:", errorText);
+        alert(`팀플 성공 처리 실패\n${errorText}`);
+        return; // ⭐ 첫 번째 API 실패 시 여기서 중단
       }
+
+      console.log("✅ 팀플 성공 API 호출 성공");
+
+      // 2️⃣ 두 번째 API: 결제 인증 취소 (환급 처리)
+      console.log("2️⃣ 결제 인증 취소 API 호출 시작");
+      const cancelAuthResponse = await fetch(`${backendUrl}/payment/cancelAuth`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          roomId: roomData.id,
+        }),
+      });
+
+      if (!cancelAuthResponse.ok) {
+        const cancelAuthError = await cancelAuthResponse.text();
+        console.error("❌ 결제 인증 취소 실패:", cancelAuthError);
+
+        // ⚠️ 환급 실패해도 팀플 성공은 완료된 상태이므로 경고만 표시
+        alert("팀플은 성공했지만 환급 처리 중 오류가 발생했습니다.\n고객센터에 문의해주세요.");
+      } else {
+        console.log("✅ 결제 인증 취소 API 호출 성공 (환급 완료)");
+      }
+
+      // 3️⃣ 모달 표시 및 상태 업데이트
+      setShowSuccessModal(true);
+      setIsSuccessCompleted(true);
     } catch (error) {
-      console.error("팀플 성공 API 호출 오류:", error);
+      console.error("💥 API 호출 오류:", error);
+      alert("처리 중 네트워크 오류가 발생했습니다. 다시 시도해주세요.");
     }
   };
 
