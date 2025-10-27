@@ -76,48 +76,43 @@ const PaymentModal = ({ setModal, roomType, memberCount, onPaymentComplete, room
           paymentWindow.document.write(htmlContent);
           paymentWindow.document.close();
 
-          // URL 변경 감지 (결제 완료 redirect 감지)
-          const checkPaymentStatus = setInterval(() => {
-            try {
-              if (paymentWindow.closed) {
-                clearInterval(checkPaymentStatus);
-                console.log("결제창이 닫혔습니다.");
-                setIsPaymentLoading(false);
-                return;
-              }
+          // postMessage 이벤트 리스너 추가
+          const handleMessage = (event: MessageEvent) => {
+            // 같은 origin에서 온 메시지만 처리
+            if (event.origin !== window.location.origin) {
+              return;
+            }
 
-              const currentUrl = paymentWindow.location.href;
+            if (event.data.type === "PAYMENT_SUCCESS") {
+              console.log("결제 성공 감지!");
 
-              if (currentUrl.includes("/payment/success")) {
-                clearInterval(checkPaymentStatus);
-                console.log("결제 성공 감지!");
+              // 이벤트 리스너 제거
+              window.removeEventListener("message", handleMessage);
 
-                // 성공 페이지가 자동으로 닫히길 기다림 (2초)
-                setTimeout(() => {
-                  if (!paymentWindow.closed) {
-                    paymentWindow.close();
-                  }
-                  alert("결제가 성공적으로 완료되었습니다!");
-                  onPaymentComplete();
-                  setModal();
-                }, 2000);
-              } else if (currentUrl.includes("/payment/fail")) {
-                clearInterval(checkPaymentStatus);
-                console.log("결제 실패 감지!");
+              alert("결제가 성공적으로 완료되었습니다!");
+              onPaymentComplete();
+              setModal();
+              setIsPaymentLoading(false);
+            } else if (event.data.type === "PAYMENT_FAIL") {
+              console.log("결제 실패 감지!");
 
-                // 실패 페이지가 자동으로 닫히길 기다림 (2초)
-                setTimeout(() => {
-                  if (!paymentWindow.closed) {
-                    paymentWindow.close();
-                  }
-                  alert("결제가 실패했습니다. 다시 시도해주세요.");
-                  setIsPaymentLoading(false);
-                }, 2000);
-              }
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            } catch (error) {
-              // Cross-origin 접근 불가 시 (결제 진행 중)
-              // 에러는 무시하고 계속 체크
+              // 이벤트 리스너 제거
+              window.removeEventListener("message", handleMessage);
+
+              alert("결제가 실패했습니다. 다시 시도해주세요.");
+              setIsPaymentLoading(false);
+            }
+          };
+
+          window.addEventListener("message", handleMessage);
+
+          // 팝업창이 닫혔는지 주기적으로 확인
+          const checkWindowClosed = setInterval(() => {
+            if (paymentWindow.closed) {
+              clearInterval(checkWindowClosed);
+              window.removeEventListener("message", handleMessage);
+              console.log("결제창이 닫혔습니다.");
+              setIsPaymentLoading(false);
             }
           }, 500);
         } else {
@@ -140,7 +135,6 @@ const PaymentModal = ({ setModal, roomType, memberCount, onPaymentComplete, room
       setIsPaymentLoading(false);
     }
   };
-
   const priceNumber = parseInt(roomType.price.replace(/[^0-9]/g, ""));
   const calculatedAmount = priceNumber * (memberCount - 1);
   const totalPrice = calculatedAmount;
