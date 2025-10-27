@@ -7,7 +7,12 @@ import { Client, IMessage } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import styles from "./actionbar.module.css";
 
-// API 응답 타입 정의
+// ✅ 백엔드 API 응답 타입 정의 - type이 객체 형태
+interface RoomTypeInfo {
+  typeName: string;
+  price: number;
+  description: string;
+}
 
 interface LastMessage {
   id: number;
@@ -30,11 +35,12 @@ interface RoomData {
   title: string;
   imageKey: string;
   imageVersion: number;
-  type: "BASIC" | "STANDARD" | "ELITE" | "DEMO";
+  type: RoomTypeInfo; // ✅ 객체로 변경
   memberCount: number;
   success: boolean;
   members: Member[];
   avatarUrl: string;
+  paymentStatus: "PAID" | "NOT_PAID"; // ✅ 추가
 }
 
 // 사용자 정보 API 응답 타입
@@ -222,6 +228,25 @@ export default function ActionBar({
 
         const roomImageUrl = room.avatarUrl || "/good_space1.jpg";
 
+        // ✅ typeName을 대문자로 변환하여 정규화
+        const normalizeRoomType = (typeName: string): "BASIC" | "STANDARD" | "ELITE" | "DEMO" => {
+          const typeNameUpper = typeName.toUpperCase();
+
+          if (typeNameUpper.includes("BASIC")) return "BASIC";
+          if (typeNameUpper.includes("STANDARD")) return "STANDARD";
+          if (typeNameUpper.includes("ELITE")) return "ELITE";
+          if (typeNameUpper.includes("DEMO")) return "DEMO";
+
+          return "BASIC"; // 기본값
+        };
+
+        const roomType = room.type?.typeName ? normalizeRoomType(room.type.typeName) : "BASIC";
+
+        console.log("ActionBar 방 타입 변환:", {
+          원본: room.type?.typeName,
+          변환후: roomType,
+        });
+
         return {
           id: room.roomId?.toString() || "0",
           name: room.title || "제목 없음",
@@ -229,14 +254,17 @@ export default function ActionBar({
           unreadCount: room.unreadCount || 0,
           memberCount: room.memberCount || 0,
           members: membersWithAvatarUrl,
-          type: room.type || "BASIC",
+          type: roomType,
           role: room.role || "MEMBER",
           roomImageUrl: roomImageUrl,
           success: room.success || false,
+          paymentStatus: room.paymentStatus || "NOT_PAID",
+          roomTypeInfo: room.type || undefined, // ✅ 전체 타입 정보 추가
         };
       });
 
       console.log("ActionBar: 방 개수:", convertedRooms.length);
+      console.log("ActionBar: 변환된 방 목록 샘플:", convertedRooms[0]);
       setRooms(convertedRooms);
     } catch (err) {
       console.error("ActionBar: 채팅방 목록을 가져오는데 실패했습니다:", err);
@@ -328,6 +356,8 @@ export default function ActionBar({
 
   const handleRoomClick = (room: Room): void => {
     console.log("ActionBar: 방 선택됨:", room.name);
+    console.log("ActionBar: 방 타입 정보:", room.roomTypeInfo);
+    console.log("ActionBar: 멤버 수:", room.memberCount);
     console.log("ActionBar: 전달되는 멤버 정보:", room.members);
     onRoomSelect(room);
     setSelectedItem(null);

@@ -4,6 +4,13 @@ import { JSX, useState, useEffect, useRef, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { Room, Member } from "@/types/room";
 import { useRouter } from "next/navigation";
+
+// 방 타입 정보 인터페이스
+interface RoomTypeInfo {
+  typeName: string;
+  price: number;
+  description: string;
+}
 import styles from "./mainpage.module.css";
 import ActionBar from "./_component/actionbar";
 import CreateRoom from "./_component/createroom";
@@ -11,6 +18,7 @@ import FindRoom from "./_component/findroom";
 import MyPage from "./_component/mypage";
 import ChatRoom from "./_component/chatroom";
 import Welcome from "./_component/welcome";
+import PaymentModal from "./_component/payment";
 import SpotlightCard from "@/app/_component/SpotlightCard";
 
 export default function MainPage(): JSX.Element {
@@ -19,6 +27,7 @@ export default function MainPage(): JSX.Element {
   const [backendAuthAttempted, setBackendAuthAttempted] = useState<boolean>(false);
   const [showAuthErrorModal, setShowAuthErrorModal] = useState<boolean>(false);
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
+  const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
   const [, setRooms] = useState<Room[]>([]);
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -91,8 +100,21 @@ export default function MainPage(): JSX.Element {
   };
 
   const handleRoomSelect = (room: Room): void => {
+    console.log("MainPage: 방 선택됨:", room.name);
+    console.log("MainPage: 결제 상태:", room.paymentStatus);
+    console.log("MainPage: 방 타입:", room.type);
+
     setSelectedRoom(room);
     setSelectedMenu(null);
+
+    // ✅ 결제 필요 여부 먼저 확인
+    if (room.paymentStatus === "NOT_PAID" && room.type !== "DEMO") {
+      console.log("MainPage: 결제가 필요한 방입니다 - PaymentModal 표시");
+      setShowPaymentModal(true);
+    } else {
+      console.log("MainPage: 결제 완료된 방 또는 DEMO 방입니다 - ChatRoom 진입");
+      setShowPaymentModal(false);
+    }
   };
 
   const handleRoomCreated = () => {
@@ -144,6 +166,7 @@ export default function MainPage(): JSX.Element {
         role: data.role || selectedRoom.role,
         memberCount: data.memberCount || selectedRoom.memberCount,
         roomImageUrl: roomImageUrl,
+        paymentStatus: data.paymentStatus || selectedRoom.paymentStatus,
       });
 
       console.log("MainPage: 방 정보 업데이트 완료");
@@ -152,7 +175,74 @@ export default function MainPage(): JSX.Element {
     }
   }, [selectedRoom, session?.accessToken]);
 
+  // ✅ 결제 완료 핸들러
+  const handlePaymentComplete = async () => {
+    console.log("MainPage: 결제 완료됨");
+    setShowPaymentModal(false);
+
+    // 방 정보 새로고침 (paymentStatus 업데이트)
+    await refreshSelectedRoom();
+
+    // ActionBar의 방 목록도 새로고침
+    setRefreshTrigger((prev) => prev + 1);
+  };
+
+  // ✅ 결제 취소 핸들러
+  const handlePaymentCancel = () => {
+    console.log("MainPage: 결제 취소됨");
+    setShowPaymentModal(false);
+    setSelectedRoom(null); // 방 선택 해제
+  };
+
   const renderContent = (): JSX.Element | null => {
+    // ✅ 결제 모달이 최우선 (결제가 필요한 경우)
+    if (showPaymentModal && selectedRoom) {
+      // roomTypeInfo가 있으면 사용, 없으면 기본값
+      const typeInfo = selectedRoom.roomTypeInfo;
+      const price: string = typeInfo ? `${typeInfo.price.toLocaleString()}원` : "0원";
+      const description: string = typeInfo ? typeInfo.description : "1인당 결제 금액";
+      const typeName: string = typeInfo ? typeInfo.typeName : selectedRoom.type || "BASIC";
+
+      // ✅ 디버깅 로그 추가
+      console.log("MainPage PaymentModal 렌더링:");
+      console.log("- selectedRoom.type:", selectedRoom.type);
+      console.log("- selectedRoom.roomTypeInfo:", selectedRoom.roomTypeInfo);
+      console.log("- typeName:", typeName);
+
+      // ✅ 방 타입에 따른 아이콘 결정
+      const getIconForRoomType = (type: string): string => {
+        const iconMap: { [key: string]: string } = {
+          BASIC: "/megacoffe.webp",
+          STANDARD: "/starbucks.png",
+          ELITE: "/starbucks.png",
+          DEMO: "/good_space1.jpg",
+        };
+        const icon = iconMap[type] || "/good_space1.jpg";
+        console.log(`- getIconForRoomType(${type}) => ${icon}`);
+        return icon;
+      };
+
+      const iconPath = getIconForRoomType(typeName);
+
+      return (
+        <PaymentModal
+          setModal={handlePaymentCancel}
+          roomType={{
+            id: typeName,
+            name: selectedRoom.name,
+            price: price,
+            description: description,
+            icon: iconPath, // ✅ 방 타입 기반 아이콘
+            iconClass: "",
+          }}
+          memberCount={selectedRoom.memberCount || 0}
+          onPaymentComplete={handlePaymentComplete}
+          roomId={selectedRoom.id}
+        />
+      );
+    }
+
+    // ✅ 결제가 완료된 경우에만 ChatRoom 렌더링
     if (selectedRoom) {
       return <ChatRoom roomData={selectedRoom} onRoomUpdate={handleRoomUpdate} onRefreshRoom={refreshSelectedRoom} />;
     }
