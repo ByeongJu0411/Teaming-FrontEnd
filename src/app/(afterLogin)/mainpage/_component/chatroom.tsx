@@ -13,7 +13,6 @@ import DataRoom from "./dataroom";
 import CreateMission from "./createmission";
 import AssignmentRoom from "./assignmentroom";
 import ChatMessage from "./chatmessage";
-import PaymentModal from "./payment";
 import SpotlightCard from "@/app/_component/SpotlightCard";
 
 import { useWebSocket } from "@/hooks/useWebSocket";
@@ -129,7 +128,6 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
   const [message, setMessage] = useState<string>("");
   const [displayMessages, setDisplayMessages] = useState<ChatMessageType[]>([]);
   const [hoveredMessage, setHoveredMessage] = useState<number | null>(null);
-  const [showPayment, setShowPayment] = useState<boolean>(roomData.paymentStatus === "NOT_PAID");
   const [showExitModal, setShowExitModal] = useState<boolean>(false);
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
   const [showLeaderOnlyModal, setShowLeaderOnlyModal] = useState<boolean>(false);
@@ -281,17 +279,11 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
     }
   }, [roomData.members]);
 
-  useEffect(() => {
-    setShowPayment(roomData.paymentStatus === "NOT_PAID");
-  }, [roomData.paymentStatus]);
-
   // roomData.success 변경 시 상태 업데이트
   useEffect(() => {
     console.log("roomData.success 변경됨:", roomData.success);
     setIsSuccessCompleted(roomData.success || false);
   }, [roomData.success]);
-
-  const targetMemberCount: number = roomData.memberCount || members.length || 0;
 
   const chatUsers: ChatUser[] = members.map((member: Member) => {
     const avatarUrl = member.avatarUrl || "";
@@ -456,43 +448,6 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
       console.log("문서 파일 선택:", file.name);
       handleFileUpload(file, "DOCUMENT");
     }
-  };
-
-  const getRoomTypeInfo = () => {
-    const roomTypes = [
-      {
-        id: "BASIC",
-        name: "Basic Room",
-        price: "팀원당 2060원",
-        description: "메가커피 아이스 아메리카노 1개",
-        icon: "/megacoffe.webp",
-        iconClass: "megacoffeeIcon",
-      },
-      {
-        id: "STANDARD",
-        name: "Standard Room",
-        price: "팀원당 4841원",
-        description: "스타벅스 아이스 아메리카노 1개",
-        icon: "/starbucks.png",
-        iconClass: "starbucksIcon",
-      },
-      {
-        id: "ELITE",
-        name: "Elite Room",
-        price: "팀원당 8240원",
-        description: "스타벅스 아이스 아메리카노 1개 + 프렌치 크루아상",
-        icon: "/starbucks.png",
-        iconClass: "starbucksIcon",
-        isElite: true,
-      },
-    ];
-
-    const roomType = roomData.type === "DEMO" ? "BASIC" : roomData.type || "BASIC";
-    return roomTypes.find((type) => type.id === roomType) || roomTypes[0];
-  };
-
-  const handlePaymentComplete = (): void => {
-    setShowPayment(false);
   };
 
   const isLeader = roomData.role === "LEADER";
@@ -661,78 +616,68 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
           </div>
 
           <div className={styles.chatBody}>
-            {showPayment ? (
-              <PaymentModal
-                setModal={() => setShowPayment(false)}
-                roomType={getRoomTypeInfo()}
-                memberCount={targetMemberCount}
-                onPaymentComplete={handlePaymentComplete}
-                roomId={roomData.id}
-              />
-            ) : (
-              <>
-                <div className={styles.chatMain}>
-                  <div ref={messagesContainerRef} className={styles.messagesContainer}>
-                    {messagesLoading && displayMessages.length === 0 ? (
-                      <div className={styles.loadingMessages}>메시지를 불러오는 중...</div>
-                    ) : (
-                      displayMessages.map((msg, index) => {
-                        const prevMessage = index > 0 ? displayMessages[index - 1] : null;
-                        const nextMessage = index < displayMessages.length - 1 ? displayMessages[index + 1] : null;
+            <>
+              <div className={styles.chatMain}>
+                <div ref={messagesContainerRef} className={styles.messagesContainer}>
+                  {messagesLoading && displayMessages.length === 0 ? (
+                    <div className={styles.loadingMessages}>메시지를 불러오는 중...</div>
+                  ) : (
+                    displayMessages.map((msg, index) => {
+                      const prevMessage = index > 0 ? displayMessages[index - 1] : null;
+                      const nextMessage = index < displayMessages.length - 1 ? displayMessages[index + 1] : null;
 
-                        const isFirstInGroup = !prevMessage || prevMessage.senderId !== msg.senderId;
-                        const isLastInGroup = !nextMessage || nextMessage.senderId !== msg.senderId;
-                        const showSenderName = isFirstInGroup;
+                      const isFirstInGroup = !prevMessage || prevMessage.senderId !== msg.senderId;
+                      const isLastInGroup = !nextMessage || nextMessage.senderId !== msg.senderId;
+                      const showSenderName = isFirstInGroup;
 
-                        return (
-                          <ChatMessage
-                            key={msg.id}
-                            message={msg}
-                            currentUserId={currentUser.id}
-                            showSenderName={showSenderName}
-                            isLastMessage={isLastInGroup}
-                            allUsers={chatUsers}
-                            hoveredMessage={hoveredMessage}
-                            setHoveredMessage={setHoveredMessage}
-                          />
-                        );
-                      })
-                    )}
-                    <div ref={messagesEndRef} />
-                  </div>
+                      return (
+                        <ChatMessage
+                          key={msg.id}
+                          message={msg}
+                          currentUserId={currentUser.id}
+                          showSenderName={showSenderName}
+                          isLastMessage={isLastInGroup}
+                          allUsers={chatUsers}
+                          hoveredMessage={hoveredMessage}
+                          setHoveredMessage={setHoveredMessage}
+                        />
+                      );
+                    })
+                  )}
+                  <div ref={messagesEndRef} />
                 </div>
-                <form onSubmit={handleSendMessage} className={styles.chatInput}>
+              </div>
+              <form onSubmit={handleSendMessage} className={styles.chatInput}>
+                <button
+                  type="button"
+                  className={styles.iconButton}
+                  onClick={() => setFileModalStatus(!fileModalStatus)}
+                >
+                  <FiPlus size={20} color="#666" />
+                </button>
+
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={message}
+                  onChange={handleInputChange}
+                  onKeyPress={handleKeyPress}
+                  placeholder="메시지를 입력하세요"
+                  className={styles.messageInput}
+                  disabled={!isConnected}
+                />
+
+                <div className={styles.inputIcons}>
                   <button
-                    type="button"
-                    className={styles.iconButton}
-                    onClick={() => setFileModalStatus(!fileModalStatus)}
+                    type="submit"
+                    className={`${styles.iconButton} ${message.trim() ? styles.sendActive : ""}`}
+                    disabled={!message.trim() || !isConnected}
                   >
-                    <FiPlus size={20} color="#666" />
+                    <FiSend size={20} color={message.trim() ? "#3F3FD4" : "#666"} />
                   </button>
-
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={message}
-                    onChange={handleInputChange}
-                    onKeyPress={handleKeyPress}
-                    placeholder="메시지를 입력하세요"
-                    className={styles.messageInput}
-                    disabled={!isConnected}
-                  />
-
-                  <div className={styles.inputIcons}>
-                    <button
-                      type="submit"
-                      className={`${styles.iconButton} ${message.trim() ? styles.sendActive : ""}`}
-                      disabled={!message.trim() || !isConnected}
-                    >
-                      <FiSend size={20} color={message.trim() ? "#3F3FD4" : "#666"} />
-                    </button>
-                  </div>
-                </form>
-              </>
-            )}
+                </div>
+              </form>
+            </>
           </div>
         </div>
 

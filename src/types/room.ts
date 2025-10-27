@@ -8,6 +8,12 @@ export interface Member {
   roomRole: "LEADER" | string;
 }
 
+export interface RoomTypeInfo {
+  typeName: string;
+  price: number;
+  description: string;
+}
+
 export interface Room {
   id: string;
   name: string;
@@ -18,6 +24,7 @@ export interface Room {
   type?: "BASIC" | "STANDARD" | "ELITE" | "DEMO";
   role?: "LEADER" | "MEMBER";
   roomImageUrl?: string;
-  paymentStatus?: "PAID" | "NOT_PAID";
+  paymentStatus: "PAID" | "NOT_PAID";
+  roomTypeInfo?: RoomTypeInfo;
   success: boolean;
 }
