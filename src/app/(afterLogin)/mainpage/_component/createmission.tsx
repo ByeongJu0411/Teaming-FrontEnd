@@ -12,7 +12,7 @@ interface Member {
   name: string;
   avatarKey: string;
   avatarVersion: number;
-  avatarUrl?: string; // ✅ avatarUrl 추가
+  avatarUrl?: string;
   roomRole: "LEADER" | string;
 }
 
@@ -84,7 +84,18 @@ const CreateMission = ({ setModal, members = [], roomId, onAssignmentCreated }: 
     setIsLoading(true);
 
     try {
-      const dueDateString = `${dueDate.year}-${dueDate.month}-${dueDate.day}T${dueDate.hour}:${dueDate.minute}:45.300Z`;
+      // ✅ 로컬 시간으로 Date 객체 생성 (타임존 자동 변환 방지)
+      const selectedDate = new Date(
+        parseInt(dueDate.year),
+        parseInt(dueDate.month) - 1, // 월은 0부터 시작
+        parseInt(dueDate.day),
+        parseInt(dueDate.hour),
+        parseInt(dueDate.minute),
+        0
+      );
+
+      // ✅ ISO 문자열로 변환 (타임존 포함)
+      const dueDateString = selectedDate.toISOString();
 
       const missionData = {
         title: missionTitle,
@@ -93,7 +104,11 @@ const CreateMission = ({ setModal, members = [], roomId, onAssignmentCreated }: 
         due: dueDateString,
       };
 
-      console.log("과제 생성 요청:", missionData);
+      console.log("=== 과제 생성 요청 ===");
+      console.log("선택한 시간:", `${dueDate.year}-${dueDate.month}-${dueDate.day} ${dueDate.hour}:${dueDate.minute}`);
+      console.log("생성된 Date 객체:", selectedDate);
+      console.log("전송할 ISO 문자열:", dueDateString);
+      console.log("전체 요청 데이터:", missionData);
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080"}/rooms/${roomId}/assignments`,
@@ -274,6 +289,10 @@ const CreateMission = ({ setModal, members = [], roomId, onAssignmentCreated }: 
                   onChange={(e) => setDueDate((prev) => ({ ...prev, year: e.target.value }))}
                   className={styles.dateSelect}
                 >
+                  <option value="2020">2020</option>
+                  <option value="2021">2021</option>
+                  <option value="2022">2022</option>
+                  <option value="2023">2023</option>
                   <option value="2024">2024</option>
                   <option value="2025">2025</option>
                   <option value="2026">2026</option>
@@ -328,9 +347,9 @@ const CreateMission = ({ setModal, members = [], roomId, onAssignmentCreated }: 
                   onChange={(e) => setDueDate((prev) => ({ ...prev, minute: e.target.value }))}
                   className={styles.timeSelect}
                 >
-                  {["00", "30"].map((minute) => (
-                    <option key={minute} value={minute}>
-                      {minute}
+                  {Array.from({ length: 60 }, (_, i) => (
+                    <option key={i} value={String(i).padStart(2, "0")}>
+                      {String(i).padStart(2, "0")}
                     </option>
                   ))}
                 </select>
