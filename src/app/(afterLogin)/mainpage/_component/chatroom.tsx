@@ -118,6 +118,31 @@ const generateAvatar = (name: string): string => {
   return avatars[index];
 };
 
+const notifyActionBarUpdate = (roomId: string, message: WSChatMessage): void => {
+  try {
+    const roomUpdateEvent = new CustomEvent("actionBarRoomUpdate", {
+      detail: {
+        roomId: parseInt(roomId),
+        lastMessage: {
+          id: message.messageId,
+          type: message.type,
+          content: message.content,
+          sender: message.sender,
+          createdAt: message.createdAt,
+        },
+      },
+    });
+
+    window.dispatchEvent(roomUpdateEvent);
+    console.log("🔔 ChatRoom: ActionBar 업데이트 이벤트 발생", {
+      roomId: parseInt(roomId),
+      content: message.content,
+    });
+  } catch (error) {
+    console.error("ChatRoom: ActionBar 업데이트 이벤트 발생 실패:", error);
+  }
+};
+
 export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: ChatRoomProps) {
   const { data: session } = useSession();
 
@@ -231,6 +256,8 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
       if (wsMessage.sender.id !== currentUser.id) {
         markAsRead(wsMessage.messageId);
       }
+
+      notifyActionBarUpdate(roomId, wsMessage);
     },
     onReadBoundaryUpdate: (update) => {
       setDisplayMessages((prev) =>
