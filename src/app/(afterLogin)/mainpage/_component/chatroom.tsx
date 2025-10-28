@@ -186,6 +186,42 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
     currentUserId: currentUser.id,
   });
 
+  // 방 입장 시 unreadCount를 0으로 리셋
+  useEffect(() => {
+    const resetUnreadCount = async () => {
+      if (!token || !roomId) return;
+
+      try {
+        // 서버에 읽음 처리 API 호출
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080"}/rooms/${roomId}/read`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (response.ok) {
+          console.log("✅ 방 입장 시 읽음 처리 완료:", roomId);
+
+          // ActionBar에 unreadCount 0으로 업데이트 이벤트 전송
+          window.dispatchEvent(
+            new CustomEvent("resetUnreadCount", {
+              detail: { roomId: Number(roomId) },
+            })
+          );
+        }
+      } catch (error) {
+        console.error("읽음 처리 오류:", error);
+      }
+    };
+
+    resetUnreadCount();
+  }, [roomId, token]);
+
   const handleMemberEntered = useCallback((member: RoomMemberResponseDto) => {
     console.log("새 멤버 입장:", member);
 
@@ -229,9 +265,34 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
     roomId,
     token,
     onMessageReceived: (wsMessage) => {
+      console.log("💬 ChatRoom: 메시지 수신:", wsMessage);
       addApiMessage(wsMessage);
 
-      if (wsMessage.sender.id !== currentUser.id) {
+      // ✅ ActionBar에 lastMessage 업데이트 이벤트 전송
+      const isMyMessage = wsMessage.sender.id === currentUser.id;
+
+      console.log("📤 ActionBar 이벤트 전송:", {
+        roomId: wsMessage.roomId,
+        isMyMessage,
+        senderId: wsMessage.sender.id,
+        currentUserId: currentUser.id,
+      });
+
+      window.dispatchEvent(
+        new CustomEvent("actionBarRoomUpdate", {
+          detail: {
+            roomId: wsMessage.roomId,
+            lastMessage: {
+              content: wsMessage.content,
+              createdAt: wsMessage.createdAt,
+              sender: wsMessage.sender,
+            },
+            isMyMessage, // ✅ 내가 보낸 메시지인지 추가
+          },
+        })
+      );
+
+      if (!isMyMessage) {
         markAsRead(wsMessage.messageId);
       }
     },
