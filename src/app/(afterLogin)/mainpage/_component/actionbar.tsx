@@ -35,12 +35,12 @@ interface RoomData {
   title: string;
   imageKey: string;
   imageVersion: number;
-  type: RoomTypeInfo; // ✅ 객체로 변경
+  type: RoomTypeInfo;
   memberCount: number;
   success: boolean;
   members: Member[];
   avatarUrl: string;
-  paymentStatus: "PAID" | "NOT_PAID"; // ✅ 추가
+  paymentStatus: "PAID" | "NOT_PAID";
 }
 
 // 사용자 정보 API 응답 타입
@@ -143,21 +143,60 @@ export default function ActionBar({
     }
   }, [session, fetchUserInfo]);
 
-  // 사용자 정보 업데이트 이벤트 리스너 추가 (모든 로그인 타입)
+  // ✅ 사용자 정보 & 채팅 메시지 업데이트 이벤트 리스너
   useEffect(() => {
     const handleUserInfoUpdate = () => {
-      console.log("ActionBar: 사용자 정보 업데이트 이벤트 감지, 사용자 정보 새로고침");
+      console.log("ActionBar: 사용자 정보 업데이트 이벤트 감지");
       fetchUserInfo();
     };
 
-    // 이벤트 리스너 등록 (아바타 업데이트 & 이름 업데이트)
+    // ✅ 채팅 메시지 수신 시 방 목록 실시간 업데이트
+    const handleRoomUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { roomId, lastMessage } = customEvent.detail;
+
+      console.log("🔔 ActionBar: 커스텀 이벤트로 방 업데이트 수신:", customEvent.detail);
+
+      setRooms((prevRooms) => {
+        const updatedRooms = prevRooms.map((room) => {
+          if (room.id === roomId.toString()) {
+            console.log("✅ ActionBar: 방 업데이트!", {
+              roomId,
+              roomName: room.name,
+              oldLastChat: room.lastChat,
+              newLastChat: lastMessage?.content,
+            });
+
+            return {
+              ...room,
+              lastChat: lastMessage?.content || room.lastChat,
+              lastMessageTime: lastMessage?.createdAt || room.lastMessageTime,
+            };
+          }
+          return room;
+        });
+
+        // 최신 메시지 순으로 정렬
+        const sortedRooms = [...updatedRooms].sort((a, b) => {
+          const timeA = a.lastMessageTime || "";
+          const timeB = b.lastMessageTime || "";
+          return timeB.localeCompare(timeA);
+        });
+
+        return sortedRooms;
+      });
+    };
+
+    // 이벤트 리스너 등록
     window.addEventListener("userAvatarUpdated", handleUserInfoUpdate);
     window.addEventListener("userNameUpdated", handleUserInfoUpdate);
+    window.addEventListener("actionBarRoomUpdate", handleRoomUpdate); // ✅ 핵심!
 
-    // 클린업 함수
+    // 클린업
     return () => {
       window.removeEventListener("userAvatarUpdated", handleUserInfoUpdate);
       window.removeEventListener("userNameUpdated", handleUserInfoUpdate);
+      window.removeEventListener("actionBarRoomUpdate", handleRoomUpdate); // ✅ 핵심!
     };
   }, [fetchUserInfo]);
 
@@ -223,7 +262,6 @@ export default function ActionBar({
 
         const roomImageUrl = room.avatarUrl || "/good_space1.jpg";
 
-        // ✅ typeName을 대문자로 변환하여 정규화
         const normalizeRoomType = (typeName: string): "BASIC" | "STANDARD" | "ELITE" | "DEMO" => {
           const typeNameUpper = typeName.toUpperCase();
 
@@ -232,15 +270,10 @@ export default function ActionBar({
           if (typeNameUpper.includes("ELITE")) return "ELITE";
           if (typeNameUpper.includes("DEMO")) return "DEMO";
 
-          return "BASIC"; // 기본값
+          return "BASIC";
         };
 
         const roomType = room.type?.typeName ? normalizeRoomType(room.type.typeName) : "BASIC";
-
-        console.log("ActionBar 방 타입 변환:", {
-          원본: room.type?.typeName,
-          변환후: roomType,
-        });
 
         return {
           id: room.roomId?.toString() || "0",
@@ -254,12 +287,12 @@ export default function ActionBar({
           roomImageUrl: roomImageUrl,
           success: room.success || false,
           paymentStatus: room.paymentStatus || "NOT_PAID",
-          roomTypeInfo: room.type || undefined, // ✅ 전체 타입 정보 추가
+          roomTypeInfo: room.type || undefined,
+          lastMessageTime: room.lastMessage?.createdAt || new Date().toISOString(), // ✅ 정렬용
         };
       });
 
       console.log("ActionBar: 방 개수:", convertedRooms.length);
-      console.log("ActionBar: 변환된 방 목록 샘플:", convertedRooms[0]);
       setRooms(convertedRooms);
     } catch (err) {
       console.error("ActionBar: 채팅방 목록을 가져오는데 실패했습니다:", err);
@@ -271,7 +304,7 @@ export default function ActionBar({
     }
   }, [session?.accessToken, session?.isBackendAuthenticated]);
 
-  // WebSocket으로 방 목록 실시간 업데이트
+  // WebSocket으로 방 목록 실시간 업데이트 (서버 이벤트용)
   useEffect(() => {
     if (!session?.accessToken) return;
 
@@ -293,26 +326,34 @@ export default function ActionBar({
     });
 
     client.onConnect = () => {
+      console.log("=== ActionBar: WebSocket 연결 성공 ===");
+
       client.subscribe("/user/queue/room-events", (message: IMessage) => {
         try {
+          console.log("🔔 ActionBar: 서버에서 방 이벤트 수신:", message.body);
           const event: UserRoomEvent = JSON.parse(message.body);
-          console.log("ActionBar: 방 이벤트 수신:", event);
 
-          setRooms((prevRooms) =>
-            prevRooms.map((room) => {
+          setRooms((prevRooms) => {
+            const updatedRooms = prevRooms.map((room) => {
               if (room.id === event.roomId.toString()) {
-                // ✅ lastMessage가 있을 때만 업데이트
-                const newLastChat = event.lastMessage?.content ? event.lastMessage.content : room.lastChat;
-
                 return {
                   ...room,
-                  lastChat: newLastChat,
+                  lastChat: event.lastMessage?.content || room.lastChat,
                   unreadCount: event.unreadCount,
+                  lastMessageTime: event.lastMessage?.createdAt || room.lastMessageTime,
                 };
               }
               return room;
-            })
-          );
+            });
+
+            const sortedRooms = [...updatedRooms].sort((a, b) => {
+              const timeA = a.lastMessageTime || "";
+              const timeB = b.lastMessageTime || "";
+              return timeB.localeCompare(timeA);
+            });
+
+            return sortedRooms;
+          });
         } catch (error) {
           console.error("ActionBar: 방 이벤트 파싱 오류:", error);
         }
@@ -323,9 +364,14 @@ export default function ActionBar({
       console.error("ActionBar STOMP Error:", frame.headers["message"]);
     };
 
+    client.onWebSocketClose = () => {
+      console.log("ActionBar: WebSocket 연결 종료");
+    };
+
     client.activate();
 
     return () => {
+      console.log("ActionBar: WebSocket 연결 해제");
       client.deactivate();
     };
   }, [session?.accessToken]);
@@ -339,7 +385,7 @@ export default function ActionBar({
 
   useEffect(() => {
     if (refreshTrigger && refreshTrigger > 0 && hasInitialLoad) {
-      console.log("ActionBar: 방 생성으로 인한 새로고침, refreshTrigger:", refreshTrigger);
+      console.log("ActionBar: 방 생성으로 인한 새로고침");
       fetchRooms();
     }
   }, [refreshTrigger, hasInitialLoad, fetchRooms]);
@@ -350,12 +396,6 @@ export default function ActionBar({
   };
 
   const handleRoomClick = (room: Room): void => {
-    console.log("ActionBar: 방 선택됨:", room.name);
-    console.log("ActionBar: 방 타입 정보:", room.roomTypeInfo);
-    console.log("ActionBar: 멤버 수:", room.memberCount);
-    console.log("ActionBar: 전달되는 멤버 정보:", room.members);
-
-    // 결제 상태와 함께 방으로 입장 (결제 모달은 방 내부에서 처리)
     onRoomSelect(room);
     setSelectedItem(null);
   };
@@ -365,7 +405,6 @@ export default function ActionBar({
     onMenuSelect("");
   };
 
-  // 사용자 이미지와 이름 표시 (통합된 userInfo state 사용)
   const displayUserImage = userInfo?.image || "/basicProfile.webp";
   const displayUserName = userInfo?.name || "사용자";
 
@@ -444,6 +483,9 @@ export default function ActionBar({
               <div className={styles.roomInfo}>
                 <div className={styles.roomHeader}>
                   <p className={styles.roomName}>{room.name}</p>
+                  {room.unreadCount !== undefined && room.unreadCount > 0 && (
+                    <span className={styles.unreadBadge}>{room.unreadCount}</span>
+                  )}
                 </div>
                 <div className={styles.roomDetails}>
                   <p className={styles.lastChat}>{room.lastChat}</p>

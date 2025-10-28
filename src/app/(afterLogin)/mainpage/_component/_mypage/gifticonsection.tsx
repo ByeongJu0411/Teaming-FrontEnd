@@ -79,7 +79,7 @@ export default function GifticonSection() {
       console.log("기프티콘 조회 API 호출:", userEmail);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/admin/gifticon?email=${encodeURIComponent(userEmail)}`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/gifticon?email=${encodeURIComponent(userEmail)}`,
         {
           method: "GET",
           headers: {

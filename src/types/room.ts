@@ -26,5 +26,6 @@ export interface Room {
   roomImageUrl?: string;
   paymentStatus: "PAID" | "NOT_PAID";
   roomTypeInfo?: RoomTypeInfo;
+  lastMessageTime?: string;
   success: boolean;
 }
