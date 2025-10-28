@@ -118,31 +118,6 @@ const generateAvatar = (name: string): string => {
   return avatars[index];
 };
 
-const notifyActionBarUpdate = (roomId: string, message: WSChatMessage): void => {
-  try {
-    const roomUpdateEvent = new CustomEvent("actionBarRoomUpdate", {
-      detail: {
-        roomId: parseInt(roomId),
-        lastMessage: {
-          id: message.messageId,
-          type: message.type,
-          content: message.content,
-          sender: message.sender,
-          createdAt: message.createdAt,
-        },
-      },
-    });
-
-    window.dispatchEvent(roomUpdateEvent);
-    console.log("🔔 ChatRoom: ActionBar 업데이트 이벤트 발생", {
-      roomId: parseInt(roomId),
-      content: message.content,
-    });
-  } catch (error) {
-    console.error("ChatRoom: ActionBar 업데이트 이벤트 발생 실패:", error);
-  }
-};
-
 export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: ChatRoomProps) {
   const { data: session } = useSession();
 
@@ -157,6 +132,8 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
   const [showLeaderOnlyModal, setShowLeaderOnlyModal] = useState<boolean>(false);
   const [members, setMembers] = useState<Member[]>(roomData.members || []);
+  const [inviteCode, setInviteCode] = useState<string>("");
+  const [isInviteCodeLoading, setIsInviteCodeLoading] = useState<boolean>(true);
 
   // API success 필드 기반으로 상태 초기화
   const [isSuccessCompleted, setIsSuccessCompleted] = useState<boolean>(roomData.success || false);
@@ -256,8 +233,6 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
       if (wsMessage.sender.id !== currentUser.id) {
         markAsRead(wsMessage.messageId);
       }
-
-      notifyActionBarUpdate(roomId, wsMessage);
     },
     onReadBoundaryUpdate: (update) => {
       setDisplayMessages((prev) =>
@@ -305,6 +280,51 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
       setMembers(roomData.members);
     }
   }, [roomData.members]);
+
+  useEffect(() => {
+    const fetchInviteCode = async () => {
+      if (!session?.accessToken) {
+        console.warn("⚠️ 세션 토큰 없음 - 초대 코드 요청 불가");
+        setIsInviteCodeLoading(false);
+        return;
+      }
+
+      try {
+        setIsInviteCodeLoading(true);
+
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080";
+        const numericRoomId = Number(roomData.id);
+
+        console.log("📡 초대코드 요청 URL:", `${backendUrl}/rooms/${numericRoomId}/invite`);
+        console.log("📦 사용 중인 토큰:", session.accessToken);
+
+        const response = await fetch(`${backendUrl}/rooms/${numericRoomId}/invite`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.accessToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          console.error("❌ 초대코드 요청 실패:", response.status, text);
+          setIsInviteCodeLoading(false);
+          return;
+        }
+
+        const data = await response.json();
+        console.log("✅ 초대코드 응답:", data);
+        setInviteCode(data.inviteCode || "");
+      } catch (error) {
+        console.error("💥 초대코드 요청 오류:", error);
+      } finally {
+        setIsInviteCodeLoading(false);
+      }
+    };
+
+    fetchInviteCode();
+  }, [roomData.id, session]);
 
   // roomData.success 변경 시 상태 업데이트
   useEffect(() => {
@@ -764,6 +784,11 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
               )}
             </div>
             <div className={styles.chatRoomInfoName}>{roomData.name}</div>
+          </div>
+
+          <div className={styles.inviteCodeSection}>
+            <span className={styles.inviteCodeLabel}>초대코드</span>
+            <span className={styles.inviteCodeValue}>{inviteCode}</span>
           </div>
 
           <div className={styles.chatUserList}>
