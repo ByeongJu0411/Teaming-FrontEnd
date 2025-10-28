@@ -50,6 +50,7 @@ export default function ProfileSection() {
   const [editNickname, setEditNickname] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSocialLogin, setIsSocialLogin] = useState<boolean>(false);
 
   // 회원정보 조회 API 함수
   const fetchUserInfo = useCallback(async (): Promise<void> => {
@@ -57,23 +58,6 @@ export default function ProfileSection() {
       setLoading(true);
       setError(null);
 
-      // 소셜 로그인인 경우 session 정보 직접 사용
-      if (session?.provider && session.provider !== "credentials") {
-        console.log("ProfileSection: 소셜 로그인 사용자 정보 사용");
-
-        setUserInfo((prev) => ({
-          ...prev,
-          email: session.user?.email || "",
-          nickname: session.user?.name || "사용자",
-          profileImage: session.user?.image || "/basicProfile.webp",
-        }));
-
-        setEditNickname(session.user?.name || "사용자");
-        setLoading(false);
-        return;
-      }
-
-      // 자체 로그인인 경우 API 호출
       const token = session?.accessToken;
 
       if (!token) {
@@ -88,7 +72,14 @@ export default function ProfileSection() {
         }
       }
 
-      console.log("ProfileSection: 자체 로그인 사용자 정보 API 조회");
+      // 소셜 로그인 여부 확인
+      const socialLogin = session?.provider && session.provider !== "credentials";
+      setIsSocialLogin(!!socialLogin);
+
+      console.log("ProfileSection: 사용자 정보 API 조회", {
+        provider: session?.provider,
+        isSocial: socialLogin,
+      });
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users/me`, {
         method: "GET",
@@ -113,7 +104,7 @@ export default function ProfileSection() {
       const data: UserInfoResponse = await response.json();
       console.log("사용자 정보 조회 성공:", data);
 
-      // avatarUrl이 응답에 포함되어 있으면 바로 사용
+      // avatarUrl이 응답에 포함되어 있으면 사용, 없으면 기본 이미지
       const avatarUrl = data.avatarUrl || "/basicProfile.webp";
 
       console.log("프로필 이미지 URL:", avatarUrl);
@@ -138,9 +129,6 @@ export default function ProfileSection() {
     session?.backendError?.hasError,
     session?.backendError?.message,
     session?.provider,
-    session?.user?.email,
-    session?.user?.name,
-    session?.user?.image,
   ]);
 
   useEffect(() => {

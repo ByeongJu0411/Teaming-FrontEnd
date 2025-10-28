@@ -1,0 +1,190 @@
+.legalPage {
+  flex: 1;
+  padding: 0;
+  display: flex;
+  color: white;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 100%;
+  margin: 0 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.legalPage::-webkit-scrollbar {
+  display: none;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid #292929;
+}
+
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: white;
+  font-size: 20px;
+  font-weight: 600;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem 0;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.backButton:hover {
+  transform: translateX(2px);
+}
+
+.title {
+  color: #f7f7f7;
+  font-size: 32px;
+  font-weight: bold;
+  margin: 0.5rem 0 0 0;
+}
+
+.metaInfo {
+  display: flex;
+  gap: 1.5rem;
+  color: #999;
+  font-size: 14px;
+}
+
+.metaItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.content {
+  background-color: #121216;
+  border: 1px solid #292929;
+  border-radius: 12px;
+  padding: 2rem;
+  line-height: 1.8;
+}
+
+.section {
+  margin-bottom: 2rem;
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.sectionTitle {
+  color: #f7f7f7;
+  font-size: 20px;
+  font-weight: bold;
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #333;
+}
+
+.articleTitle {
+  color: #4285f4;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 1.5rem 0 0.75rem 0;
+}
+
+.paragraph {
+  color: #ccc;
+  font-size: 15px;
+  margin: 0 0 1rem 0;
+  line-height: 1.8;
+}
+
+.list {
+  color: #ccc;
+  font-size: 15px;
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+  line-height: 1.8;
+}
+
+.listItem {
+  margin-bottom: 0.5rem;
+}
+
+.bulletList {
+  list-style-type: disc;
+}
+
+.numberedList {
+  list-style-type: decimal;
+}
+
+.subList {
+  margin-top: 0.5rem;
+  padding-left: 1.5rem;
+  list-style-type: circle;
+}
+
+.highlight {
+  color: #4285f4;
+  font-weight: 600;
+}
+
+.note {
+  background-color: #1a1a1a;
+  border-left: 3px solid #4285f4;
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+  border-radius: 4px;
+}
+
+.noteTitle {
+  color: #4285f4;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+}
+
+.noteText {
+  color: #999;
+  font-size: 14px;
+  margin: 0;
+  line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+  .legalPage {
+    padding: 1rem;
+    gap: 1.5rem;
+  }
+
+  .title {
+    font-size: 24px;
+  }
+
+  .content {
+    padding: 1.25rem;
+  }
+
+  .sectionTitle {
+    font-size: 18px;
+  }
+
+  .articleTitle {
+    font-size: 16px;
+  }
+
+  .paragraph,
+  .list {
+    font-size: 14px;
+  }
+
+  .metaInfo {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}

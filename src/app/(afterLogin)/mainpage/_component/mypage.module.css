@@ -572,6 +572,175 @@
   color: white;
 }
 
+/* 소셜 로그인 안내 메시지 스타일 */
+.socialLoginNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  transition: all 0.3s ease;
+}
+
+.socialLoginContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.socialLoginTitle {
+  color: #f7f7f7;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.socialLoginDescription {
+  color: #999;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* 법적 정보 섹션 */
+.legalSection {
+  margin-top: 1rem;
+}
+
+.legalList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.legalItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background-color: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.legalItem:hover {
+  border-color: #4285f4;
+  transform: translateX(2px);
+}
+
+.legalInfo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.legalIcon {
+  font-size: 20px;
+  color: #4285f4;
+}
+
+.legalText {
+  display: flex;
+  gap: 1rem;
+}
+
+.legalTitle {
+  color: #f7f7f7;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.legalDescription {
+  color: #999;
+  font-size: 13px;
+  margin: 0;
+}
+
+.legalArrow {
+  color: #666;
+  font-size: 18px;
+  transition: all 0.3s ease;
+}
+
+.legalItem:hover .legalArrow {
+  color: #4285f4;
+  transform: translateX(4px);
+}
+
+/* 오버레이 스타일 */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.85);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  overflow-y: auto;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.overlayContent {
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease;
+  background-color: #0a0a0a;
+  border-radius: 16px;
+  padding: 2rem;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.overlayContent::-webkit-scrollbar {
+  width: 8px;
+}
+
+.overlayContent::-webkit-scrollbar-track {
+  background: #1a1a1a;
+  border-radius: 4px;
+}
+
+.overlayContent::-webkit-scrollbar-thumb {
+  background: #4285f4;
+  border-radius: 4px;
+}
+
+.overlayContent::-webkit-scrollbar-thumb:hover {
+  background: #1976d2;
+}
+
 /* 반응형 디자인 */
 @media (max-width: 768px) {
   .mypage {
@@ -657,44 +826,8 @@
   .tabBtn {
     padding: 12px 16px;
   }
-}
-/* 소셜 로그인 안내 메시지 스타일 */
-.socialLoginNotice {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
 
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin: 1rem 0;
-  transition: all 0.3s ease;
-}
-
-.socialLoginContent {
-  flex: 1;
-  min-width: 0;
-}
-
-.socialLoginTitle {
-  color: #f7f7f7;
-  font-size: 18px;
-  font-weight: 600;
-  margin: 0 0 0.5rem 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.socialLoginDescription {
-  color: #999;
-  font-size: 14px;
-  line-height: 1.5;
-  margin: 0;
-}
-
-/* 모바일 반응형 */
-@media (max-width: 768px) {
+  /* 소셜 로그인 안내 모바일 */
   .socialLoginNotice {
     flex-direction: column;
     text-align: center;
@@ -710,5 +843,22 @@
   .socialLoginTitle {
     justify-content: center;
     font-size: 16px;
+  }
+
+  /* 법적 정보 모바일 */
+  .legalItem {
+    padding: 0.875rem;
+  }
+
+  .legalIcon {
+    font-size: 18px;
+  }
+
+  .legalTitle {
+    font-size: 15px;
+  }
+
+  .legalDescription {
+    font-size: 12px;
   }
 }
