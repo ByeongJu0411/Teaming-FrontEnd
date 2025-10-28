@@ -38,6 +38,7 @@ const PaymentModal = ({ setModal, roomType, memberCount, onPaymentComplete, room
       setIsTransitioning(false);
     }, 300);
   };
+
   const handlePayment = async () => {
     setIsPaymentLoading(true);
 
@@ -91,16 +92,16 @@ const PaymentModal = ({ setModal, roomType, memberCount, onPaymentComplete, room
               // 결제 성공 메시지
               alert("결제가 성공적으로 완료되었습니다!");
 
-              // 결제 완료 콜백 호출
-              onPaymentComplete();
-
-              // 모달 닫기 - setModal 호출 추가
-              setModal();
-
+              // 로딩 상태 해제
               setIsPaymentLoading(false);
 
-              // 페이지 새로고침으로 강제 이동 (옵션)
-              // window.location.reload();
+              // 결제 완료 콜백 호출 (먼저)
+              onPaymentComplete();
+
+              // 모달 닫기는 약간의 지연 후 (상태 업데이트가 완료되도록)
+              setTimeout(() => {
+                setModal();
+              }, 100);
             } else if (event.data.type === "PAYMENT_FAIL") {
               console.log("결제 실패 감지!");
 
@@ -143,6 +144,7 @@ const PaymentModal = ({ setModal, roomType, memberCount, onPaymentComplete, room
       setIsPaymentLoading(false);
     }
   };
+
   const priceNumber = parseInt(roomType.price.replace(/[^0-9]/g, ""));
   const calculatedAmount = priceNumber * (memberCount - 1);
   const totalPrice = calculatedAmount;

@@ -133,19 +133,19 @@ export default function MainPage(): JSX.Element {
         paymentStatus: "PAID" as const,
       };
 
-      // 상태 업데이트
-      setShowPaymentModal(false);
+      console.log("MainPage: 업데이트된 방 정보:", updatedRoom);
+
+      // 먼저 방 정보를 업데이트
       setSelectedRoom(updatedRoom);
+
+      // 그 다음 모달 닫기
+      setShowPaymentModal(false);
 
       // ActionBar의 방 목록 새로고침
       setRefreshTrigger((prev) => prev + 1);
-
-      // 강제로 ChatRoom 렌더링 트리거
-      setTimeout(() => {
-        setSelectedMenu(null);
-      }, 100);
     }
   };
+
   // ✅ 결제 취소 핸들러
   const handlePaymentCancel = () => {
     console.log("MainPage: 결제 취소됨");
@@ -154,8 +154,8 @@ export default function MainPage(): JSX.Element {
   };
 
   const renderContent = (): JSX.Element | null => {
-    // 결제 모달 표시 중이면
-    if (showPaymentModal && selectedRoom && selectedRoom.paymentStatus === "NOT_PAID") {
+    // 결제 모달은 가장 먼저 체크 (showPaymentModal이 true일 때만)
+    if (showPaymentModal && selectedRoom?.paymentStatus === "NOT_PAID") {
       const typeInfo = selectedRoom.roomTypeInfo;
       const price: string = typeInfo ? `${typeInfo.price.toLocaleString()}원` : "0원";
       const description: string = typeInfo ? typeInfo.description : "1인당 결제 금액";
@@ -191,8 +191,9 @@ export default function MainPage(): JSX.Element {
       );
     }
 
-    // 선택된 방이 있고 결제가 완료되었거나 DEMO 방인 경우
-    if (selectedRoom && (selectedRoom.paymentStatus === "PAID" || selectedRoom.type === "DEMO")) {
+    // 선택된 방이 있고 모달이 닫혀있으며, 결제가 완료되었거나 DEMO 방인 경우
+    if (!showPaymentModal && selectedRoom && (selectedRoom.paymentStatus === "PAID" || selectedRoom.type === "DEMO")) {
+      console.log("MainPage: ChatRoom 렌더링 - ", selectedRoom.name);
       return <ChatRoom roomData={selectedRoom} onRoomUpdate={handleRoomUpdate} />;
     }
 
@@ -208,6 +209,7 @@ export default function MainPage(): JSX.Element {
         return <Welcome />;
     }
   };
+
   // 로딩 중 (NextAuth 세션 로딩)
   if (status === "loading") {
     return (
