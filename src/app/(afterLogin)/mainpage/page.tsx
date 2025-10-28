@@ -104,16 +104,17 @@ export default function MainPage(): JSX.Element {
     console.log("MainPage: 결제 상태:", room.paymentStatus);
     console.log("MainPage: 방 타입:", room.type);
 
-    setSelectedRoom(room);
-    setSelectedMenu(null);
-
-    // ✅ 결제 필요 여부 먼저 확인
-    if (room.paymentStatus === "NOT_PAID" && room.type !== "DEMO") {
+    // 결제 완료 후 다시 선택된 경우를 위한 처리
+    if (room.paymentStatus === "PAID" || room.type === "DEMO") {
+      setSelectedRoom(room);
+      setSelectedMenu(null);
+      setShowPaymentModal(false);
+      console.log("MainPage: 결제 완료된 방 또는 DEMO 방입니다 - ChatRoom 진입");
+    } else if (room.paymentStatus === "NOT_PAID") {
+      setSelectedRoom(room);
+      setSelectedMenu(null);
       console.log("MainPage: 결제가 필요한 방입니다 - PaymentModal 표시");
       setShowPaymentModal(true);
-    } else {
-      console.log("MainPage: 결제 완료된 방 또는 DEMO 방입니다 - ChatRoom 진입");
-      setShowPaymentModal(false);
     }
   };
 
@@ -122,12 +123,27 @@ export default function MainPage(): JSX.Element {
   };
 
   // ✅ 결제 완료 핸들러
-  const handlePaymentComplete = () => {
+  const handlePaymentComplete = async () => {
     console.log("MainPage: 결제 완료됨");
-    setShowPaymentModal(false);
 
-    // ActionBar의 방 목록 새로고침
-    setRefreshTrigger((prev) => prev + 1);
+    // 결제 완료된 방의 정보를 유지하면서 상태 업데이트
+    if (selectedRoom) {
+      const updatedRoom = {
+        ...selectedRoom,
+        paymentStatus: "PAID" as const,
+      };
+
+      console.log("MainPage: 업데이트된 방 정보:", updatedRoom);
+
+      // 먼저 방 정보를 업데이트
+      setSelectedRoom(updatedRoom);
+
+      // 그 다음 모달 닫기
+      setShowPaymentModal(false);
+
+      // ActionBar의 방 목록 새로고침
+      setRefreshTrigger((prev) => prev + 1);
+    }
   };
 
   // ✅ 결제 취소 핸들러
@@ -138,21 +154,13 @@ export default function MainPage(): JSX.Element {
   };
 
   const renderContent = (): JSX.Element | null => {
-    // ✅ 결제 모달이 최우선 (결제가 필요한 경우)
-    if (showPaymentModal && selectedRoom) {
-      // roomTypeInfo가 있으면 사용, 없으면 기본값
+    // 결제 모달은 가장 먼저 체크 (showPaymentModal이 true일 때만)
+    if (showPaymentModal && selectedRoom?.paymentStatus === "NOT_PAID") {
       const typeInfo = selectedRoom.roomTypeInfo;
       const price: string = typeInfo ? `${typeInfo.price.toLocaleString()}원` : "0원";
       const description: string = typeInfo ? typeInfo.description : "1인당 결제 금액";
       const typeName: string = typeInfo ? typeInfo.typeName : selectedRoom.type || "BASIC";
 
-      // ✅ 디버깅 로그 추가
-      console.log("MainPage PaymentModal 렌더링:");
-      console.log("- selectedRoom.type:", selectedRoom.type);
-      console.log("- selectedRoom.roomTypeInfo:", selectedRoom.roomTypeInfo);
-      console.log("- typeName:", typeName);
-
-      // ✅ 방 타입에 따른 아이콘 결정
       const getIconForRoomType = (type: string): string => {
         const iconMap: { [key: string]: string } = {
           BASIC: "/megacoffe.webp",
@@ -160,9 +168,7 @@ export default function MainPage(): JSX.Element {
           ELITE: "/starbucks.png",
           DEMO: "/good_space1.jpg",
         };
-        const icon = iconMap[type] || "/good_space1.jpg";
-        console.log(`- getIconForRoomType(${type}) => ${icon}`);
-        return icon;
+        return iconMap[type] || "/good_space1.jpg";
       };
 
       const iconPath = getIconForRoomType(typeName);
@@ -175,7 +181,7 @@ export default function MainPage(): JSX.Element {
             name: selectedRoom.name,
             price: price,
             description: description,
-            icon: iconPath, // ✅ 방 타입 기반 아이콘
+            icon: iconPath,
             iconClass: "",
           }}
           memberCount={selectedRoom.memberCount || 0}
@@ -185,17 +191,13 @@ export default function MainPage(): JSX.Element {
       );
     }
 
-    // ✅ 결제가 완료된 경우에만 ChatRoom 렌더링
-    if (selectedRoom) {
-      return (
-        <ChatRoom
-          roomData={selectedRoom}
-          onRoomUpdate={handleRoomUpdate}
-          // onRefreshRoom prop 제거
-        />
-      );
+    // 선택된 방이 있고 모달이 닫혀있으며, 결제가 완료되었거나 DEMO 방인 경우
+    if (!showPaymentModal && selectedRoom && (selectedRoom.paymentStatus === "PAID" || selectedRoom.type === "DEMO")) {
+      console.log("MainPage: ChatRoom 렌더링 - ", selectedRoom.name);
+      return <ChatRoom roomData={selectedRoom} onRoomUpdate={handleRoomUpdate} />;
     }
 
+    // 메뉴 선택에 따른 렌더링
     switch (selectedMenu) {
       case "티밍룸 생성":
         return <CreateRoom onRoomCreated={handleRoomCreated} />;
