@@ -93,27 +93,24 @@ export default function ActionBar({
   const [hasInitialLoad, setHasInitialLoad] = useState<boolean>(false);
   const { data: session } = useSession();
 
-  // 자체 로그인 사용자 정보 상태 추가
-  const [credentialsUserInfo, setCredentialsUserInfo] = useState<{
+  // 통합된 사용자 정보 상태 (자체 로그인 + 소셜 로그인 모두 사용)
+  const [userInfo, setUserInfo] = useState<{
     name: string;
     image: string;
   } | null>(null);
 
   const navItems: string[] = ["티밍룸 생성", "티밍룸 찾기", "마이페이지"];
 
-  // 자체 로그인 사용자 정보 조회
-  const fetchCredentialsUserInfo = useCallback(async (): Promise<void> => {
+  // 통합된 사용자 정보 조회 함수 (자체/소셜 로그인 모두 처리)
+  const fetchUserInfo = useCallback(async (): Promise<void> => {
     if (!session?.accessToken || !session?.isBackendAuthenticated) {
       return;
     }
 
-    // 소셜 로그인이면 조회 안 함
-    if (session.provider && session.provider !== "credentials") {
-      return;
-    }
-
     try {
-      console.log("ActionBar: 자체 로그인 사용자 정보 조회 시작");
+      console.log("ActionBar: 사용자 정보 조회 시작", {
+        provider: session.provider,
+      });
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080"}/users/me`, {
         method: "GET",
@@ -130,7 +127,7 @@ export default function ActionBar({
       const data: UserInfoResponse = await response.json();
       console.log("ActionBar: 사용자 정보 조회 성공:", data);
 
-      setCredentialsUserInfo({
+      setUserInfo({
         name: data.name,
         image: data.avatarUrl || "/basicProfile.webp",
       });
@@ -139,20 +136,18 @@ export default function ActionBar({
     }
   }, [session?.accessToken, session?.isBackendAuthenticated, session?.provider]);
 
-  // 세션이 변경될 때 사용자 정보 조회
+  // 세션이 변경될 때 사용자 정보 조회 (모든 로그인 타입)
   useEffect(() => {
-    if (session && session.provider === "credentials") {
-      fetchCredentialsUserInfo();
+    if (session) {
+      fetchUserInfo();
     }
-  }, [session, fetchCredentialsUserInfo]);
+  }, [session, fetchUserInfo]);
 
-  // 사용자 정보 업데이트 이벤트 리스너 추가
+  // 사용자 정보 업데이트 이벤트 리스너 추가 (모든 로그인 타입)
   useEffect(() => {
     const handleUserInfoUpdate = () => {
       console.log("ActionBar: 사용자 정보 업데이트 이벤트 감지, 사용자 정보 새로고침");
-      if (session?.provider === "credentials") {
-        fetchCredentialsUserInfo();
-      }
+      fetchUserInfo();
     };
 
     // 이벤트 리스너 등록 (아바타 업데이트 & 이름 업데이트)
@@ -164,7 +159,7 @@ export default function ActionBar({
       window.removeEventListener("userAvatarUpdated", handleUserInfoUpdate);
       window.removeEventListener("userNameUpdated", handleUserInfoUpdate);
     };
-  }, [session?.provider, fetchCredentialsUserInfo]);
+  }, [fetchUserInfo]);
 
   const fetchRooms = useCallback(async (): Promise<void> => {
     if (!session?.accessToken || !session?.isBackendAuthenticated) {
@@ -370,11 +365,9 @@ export default function ActionBar({
     onMenuSelect("");
   };
 
-  // 사용자 이미지와 이름 결정 로직
-  const userImage = session?.provider === "credentials" ? credentialsUserInfo?.image : session?.user?.image;
-
-  const userName =
-    session?.provider === "credentials" ? credentialsUserInfo?.name || "사용자" : session?.user?.name || "사용자";
+  // 사용자 이미지와 이름 표시 (통합된 userInfo state 사용)
+  const displayUserImage = userInfo?.image || "/basicProfile.webp";
+  const displayUserName = userInfo?.name || "사용자";
 
   return (
     <div className={styles.actionBar}>
@@ -384,9 +377,9 @@ export default function ActionBar({
       <div className={styles.navBar}>
         <div className={styles.userInfo}>
           <div className={styles.userImg}>
-            {userImage ? (
+            {displayUserImage ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={userImage} alt="사용자 프로필" className={styles.profileImage} />
+              <img src={displayUserImage} alt="사용자 프로필" className={styles.profileImage} />
             ) : (
               <div className={styles.defaultAvatar}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -398,7 +391,7 @@ export default function ActionBar({
               </div>
             )}
           </div>
-          <div className={styles.userName}>{userName}님</div>
+          <div className={styles.userName}>{displayUserName}님</div>
         </div>
         <div className={styles.navItem}>
           {navItems.map((item) => (
