@@ -1,6 +1,6 @@
 "use client";
 
-import { JSX, useState, useEffect, useCallback } from "react";
+import { JSX, useState, useEffect, useCallback, useRef } from "react";
 import { Room, Member } from "@/types/room";
 import { useSession } from "next-auth/react";
 import { Client, IMessage } from "@stomp/stompjs";
@@ -93,6 +93,9 @@ export default function ActionBar({
   const [hasInitialLoad, setHasInitialLoad] = useState<boolean>(false);
   const { data: session } = useSession();
 
+  // 🔥 WebSocket 재연결 방지: useRef로 현재 선택된 방 추적
+  const selectedRoomRef = useRef<Room | null>(selectedRoom);
+
   // 통합된 사용자 정보 상태 (자체 로그인 + 소셜 로그인 모두 사용)
   const [userInfo, setUserInfo] = useState<{
     name: string;
@@ -100,6 +103,11 @@ export default function ActionBar({
   } | null>(null);
 
   const navItems: string[] = ["티밍룸 생성", "티밍룸 찾기", "마이페이지"];
+
+  // 🔥 selectedRoom이 변경될 때 ref 업데이트
+  useEffect(() => {
+    selectedRoomRef.current = selectedRoom;
+  }, [selectedRoom]);
 
   // 통합된 사용자 정보 조회 함수 (자체/소셜 로그인 모두 처리)
   const fetchUserInfo = useCallback(async (): Promise<void> => {
@@ -153,24 +161,32 @@ export default function ActionBar({
     // ✅ 채팅 메시지 수신 시 방 목록 실시간 업데이트
     const handleRoomUpdate = (event: Event) => {
       const customEvent = event as CustomEvent;
-      const { roomId, lastMessage } = customEvent.detail;
+      const { roomId, lastMessage, isMyMessage } = customEvent.detail;
 
       console.log("🔔 ActionBar: 커스텀 이벤트로 방 업데이트 수신:", customEvent.detail);
 
       setRooms((prevRooms) => {
         const updatedRooms = prevRooms.map((room) => {
           if (room.id === roomId.toString()) {
+            // 현재 선택된 방이 아니고, 내가 보낸 메시지가 아니면 unreadCount 증가
+            const shouldIncreaseUnread = selectedRoom?.id !== room.id && !isMyMessage;
+
             console.log("✅ ActionBar: 방 업데이트!", {
               roomId,
               roomName: room.name,
               oldLastChat: room.lastChat,
               newLastChat: lastMessage?.content,
+              oldUnreadCount: room.unreadCount,
+              shouldIncreaseUnread,
+              isSelectedRoom: selectedRoom?.id === room.id,
+              isMyMessage,
             });
 
             return {
               ...room,
               lastChat: lastMessage?.content || room.lastChat,
               lastMessageTime: lastMessage?.createdAt || room.lastMessageTime,
+              unreadCount: shouldIncreaseUnread ? (room.unreadCount || 0) + 1 : room.unreadCount || 0,
             };
           }
           return room;
@@ -187,18 +203,32 @@ export default function ActionBar({
       });
     };
 
+    // ✅ unreadCount 리셋 이벤트 핸들러 추가
+    const handleResetUnreadCount = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { roomId } = customEvent.detail;
+
+      console.log("🔄 ActionBar: unreadCount 리셋 요청:", roomId);
+
+      setRooms((prevRooms) =>
+        prevRooms.map((room) => (room.id === roomId.toString() ? { ...room, unreadCount: 0 } : room))
+      );
+    };
+
     // 이벤트 리스너 등록
     window.addEventListener("userAvatarUpdated", handleUserInfoUpdate);
     window.addEventListener("userNameUpdated", handleUserInfoUpdate);
-    window.addEventListener("actionBarRoomUpdate", handleRoomUpdate); // ✅ 핵심!
+    window.addEventListener("actionBarRoomUpdate", handleRoomUpdate);
+    window.addEventListener("resetUnreadCount", handleResetUnreadCount);
 
     // 클린업
     return () => {
       window.removeEventListener("userAvatarUpdated", handleUserInfoUpdate);
       window.removeEventListener("userNameUpdated", handleUserInfoUpdate);
-      window.removeEventListener("actionBarRoomUpdate", handleRoomUpdate); // ✅ 핵심!
+      window.removeEventListener("actionBarRoomUpdate", handleRoomUpdate);
+      window.removeEventListener("resetUnreadCount", handleResetUnreadCount);
     };
-  }, [fetchUserInfo]);
+  }, [fetchUserInfo, selectedRoom?.id]);
 
   const fetchRooms = useCallback(async (): Promise<void> => {
     if (!session?.accessToken || !session?.isBackendAuthenticated) {
@@ -330,16 +360,41 @@ export default function ActionBar({
 
       client.subscribe("/user/queue/room-events", (message: IMessage) => {
         try {
-          console.log("🔔 ActionBar: 서버에서 방 이벤트 수신:", message.body);
+          console.log("🔔 ActionBar: 서버에서 방 이벤트 수신 (Raw):", message.body);
           const event: UserRoomEvent = JSON.parse(message.body);
+          console.log("🔔 ActionBar: 파싱된 이벤트:", {
+            roomId: event.roomId,
+            unreadCount: event.unreadCount,
+            lastMessage: event.lastMessage,
+          });
 
           setRooms((prevRooms) => {
+            console.log(
+              "📋 WebSocket - 현재 방 목록:",
+              prevRooms.map((r) => ({ id: r.id, name: r.name, unreadCount: r.unreadCount }))
+            );
+
             const updatedRooms = prevRooms.map((room) => {
               if (room.id === event.roomId.toString()) {
+                // 🔥 핵심 수정: useRef로 현재 선택된 방 확인 (WebSocket 재연결 방지)
+                const isCurrentlySelectedRoom = selectedRoomRef.current?.id === room.id;
+
+                console.log("✅ ActionBar WebSocket: 방 업데이트!", {
+                  roomId: event.roomId,
+                  roomName: room.name,
+                  oldUnreadCount: room.unreadCount,
+                  newUnreadCount: event.unreadCount,
+                  oldLastChat: room.lastChat,
+                  newLastChat: event.lastMessage?.content,
+                  isCurrentlySelectedRoom,
+                  willUpdateUnreadCount: !isCurrentlySelectedRoom,
+                });
+
                 return {
                   ...room,
                   lastChat: event.lastMessage?.content || room.lastChat,
-                  unreadCount: event.unreadCount,
+                  // 🔥 선택된 방이면 기존 unreadCount 유지, 아니면 서버 값으로 업데이트
+                  unreadCount: isCurrentlySelectedRoom ? room.unreadCount : event.unreadCount,
                   lastMessageTime: event.lastMessage?.createdAt || room.lastMessageTime,
                 };
               }
@@ -352,6 +407,10 @@ export default function ActionBar({
               return timeB.localeCompare(timeA);
             });
 
+            console.log(
+              "📋 WebSocket - 업데이트된 방 목록:",
+              sortedRooms.map((r) => ({ id: r.id, name: r.name, unreadCount: r.unreadCount }))
+            );
             return sortedRooms;
           });
         } catch (error) {
@@ -396,8 +455,17 @@ export default function ActionBar({
   };
 
   const handleRoomClick = (room: Room): void => {
+    console.log("🖱️ 방 클릭:", room.name, "현재 unreadCount:", room.unreadCount);
+
+    // 방 선택
     onRoomSelect(room);
     setSelectedItem(null);
+
+    // unreadCount를 즉시 0으로 리셋
+    if (room.unreadCount !== undefined && room.unreadCount > 0) {
+      console.log("✅ 방 클릭 - unreadCount 0으로 리셋:", room.id);
+      setRooms((prevRooms) => prevRooms.map((r) => (r.id === room.id ? { ...r, unreadCount: 0 } : r)));
+    }
   };
 
   const handleHomeClick = (): void => {
