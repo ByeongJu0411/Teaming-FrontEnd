@@ -133,7 +133,8 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
   const [showLeaderOnlyModal, setShowLeaderOnlyModal] = useState<boolean>(false);
   const [members, setMembers] = useState<Member[]>(roomData.members || []);
   const [inviteCode, setInviteCode] = useState<string>("");
-  const [isInviteCodeLoading, setIsInviteCodeLoading] = useState<boolean>(true);
+  const [showInviteCode, setShowInviteCode] = useState<boolean>(true);
+  const [, setIsInviteCodeLoading] = useState<boolean>(true);
 
   // API success 필드 기반으로 상태 초기화
   const [isSuccessCompleted, setIsSuccessCompleted] = useState<boolean>(roomData.success || false);
@@ -286,11 +287,13 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
       if (!session?.accessToken) {
         console.warn("⚠️ 세션 토큰 없음 - 초대 코드 요청 불가");
         setIsInviteCodeLoading(false);
+        setShowInviteCode(false);
         return;
       }
 
       try {
         setIsInviteCodeLoading(true);
+        setShowInviteCode(true);
 
         const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://13.125.193.243:8080";
         const numericRoomId = Number(roomData.id);
@@ -309,6 +312,13 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
         if (!response.ok) {
           const text = await response.text();
           console.error("❌ 초대코드 요청 실패:", response.status, text);
+
+          // 🔽 팀장이 아닐 때 400 에러 처리
+          if (response.status === 400 && text.includes("팀장이 아닙니다")) {
+            console.log("팀장이 아님 - 초대코드 표시하지 않음");
+            setShowInviteCode(false);
+          }
+
           setIsInviteCodeLoading(false);
           return;
         }
@@ -316,8 +326,10 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
         const data = await response.json();
         console.log("✅ 초대코드 응답:", data);
         setInviteCode(data.inviteCode || "");
+        setShowInviteCode(true);
       } catch (error) {
         console.error("💥 초대코드 요청 오류:", error);
+        setShowInviteCode(false);
       } finally {
         setIsInviteCodeLoading(false);
       }
@@ -785,11 +797,12 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
             </div>
             <div className={styles.chatRoomInfoName}>{roomData.name}</div>
           </div>
-
-          <div className={styles.inviteCodeSection}>
-            <span className={styles.inviteCodeLabel}>초대코드</span>
-            <span className={styles.inviteCodeValue}>{inviteCode}</span>
-          </div>
+          {showInviteCode && (
+            <div className={styles.inviteCodeSection}>
+              <span className={styles.inviteCodeLabel}>초대코드</span>
+              <span className={styles.inviteCodeValue}>{inviteCode}</span>
+            </div>
+          )}
 
           <div className={styles.chatUserList}>
             <div className={styles.userListTitle}>참여자 ({members.length})</div>
