@@ -15,6 +15,9 @@ import ProfileImageStep from "./_component/ProfileImageStep";
 import CompletionStep from "./_component/CompletionStep";
 
 export default function SignupPage() {
+  // 현재 스텝 상태 추가
+  const [currentStep, setCurrentStep] = useState<number>(1);
+
   // 폼 상태 관리
   const [email, setEmail] = useState<string>("");
   const [isVerified, setIsVerified] = useState<boolean>(false);
@@ -29,6 +32,7 @@ export default function SignupPage() {
 
   const handleStepChange = (step: number) => {
     console.log(`현재 스텝: ${step}`);
+    setCurrentStep(step);
   };
 
   const handleFinalCompleted = () => {
@@ -40,14 +44,25 @@ export default function SignupPage() {
     email,
     password,
     name: nickname,
-    avatarFile: profileImage || undefined, // ⭐ File 객체 전달
+    avatarFile: profileImage || undefined,
   };
 
-  // 유효성 검사 함수들
-  const canProceedToPassword = isVerified;
-  const canProceedToNickname = password && confirmPassword && password === confirmPassword && password.length >= 8;
-  const canProceedToProfile = nickname && nickname.length >= 2;
-  const canComplete = canProceedToProfile;
+  // ⭐ 비밀번호 확인 일치 여부 추가
+  const isSignupDataValid: boolean =
+    !!email &&
+    isVerified &&
+    !!password &&
+    password.length >= 8 &&
+    !!confirmPassword &&
+    password === confirmPassword && // ⭐ 비밀번호 일치 여부 추가
+    !!nickname &&
+    nickname.length >= 2;
+
+  // 비밀번호 스텝(Step 3) 유효성 검사
+  const canProceedPasswordStep = password && confirmPassword && password === confirmPassword && password.length >= 8;
+
+  // 현재 스텝이 3(비밀번호 스텝)일 때만 검증
+  const isNextButtonDisabled = currentStep === 3 && !canProceedPasswordStep;
 
   return (
     <>
@@ -72,6 +87,13 @@ export default function SignupPage() {
             onFinalStepCompleted={handleFinalCompleted}
             backButtonText="이전"
             nextButtonText="다음"
+            nextButtonProps={{
+              disabled: isNextButtonDisabled,
+              style: {
+                opacity: isNextButtonDisabled ? 0.5 : 1,
+                cursor: isNextButtonDisabled ? "not-allowed" : "pointer",
+              },
+            }}
           >
             {/* Step 1: 환영 메시지 */}
             <Step>
@@ -115,7 +137,7 @@ export default function SignupPage() {
 
             {/* Step 6: 회원가입 완료 */}
             <Step>
-              <CompletionStep nickname={nickname} signupData={signupData} />
+              <CompletionStep nickname={nickname} signupData={signupData} isDataValid={isSignupDataValid} />
             </Step>
           </Stepper>
         </div>

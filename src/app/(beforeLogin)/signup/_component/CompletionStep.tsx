@@ -11,6 +11,7 @@ interface CompletionStepProps {
     name: string;
     avatarFile?: File;
   };
+  isDataValid: boolean; // ⭐ 추가
 }
 
 interface SignUpResponse {
@@ -40,7 +41,7 @@ interface UserMeResponse {
   avatarUrl?: string;
 }
 
-export default function CompletionStep({ nickname, signupData }: CompletionStepProps) {
+export default function CompletionStep({ nickname, signupData, isDataValid }: CompletionStepProps) {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -196,6 +197,12 @@ export default function CompletionStep({ nickname, signupData }: CompletionStepP
   };
 
   const handleStart = async () => {
+    // ⭐ isDataValid로 유효성 검증
+    if (!isDataValid) {
+      alert("필수 정보가 누락되었거나 올바르지 않습니다. 이전 단계를 다시 확인해주세요.");
+      return;
+    }
+
     if (!signupData.email || !signupData.password || !signupData.name) {
       alert("필수 정보가 누락되었습니다. 이전 단계를 다시 확인해주세요.");
       return;
