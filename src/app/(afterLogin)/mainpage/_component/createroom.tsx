@@ -111,7 +111,7 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
   const { data: session, status } = useSession();
 
   // 상태 관리
-  const [teamCount, setTeamCount] = useState<number>(1);
+  const [teamCount, setTeamCount] = useState<number>(2);
   const [roomTitle, setRoomTitle] = useState<string>("");
   const [roomSubTitle, setRoomSubTitle] = useState<string>("");
   const [selectedRoom, setSelectedRoom] = useState<string>("");
@@ -126,7 +126,7 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
     {
       id: "BASIC",
       name: "Basic Room",
-      price: "팀원당 2060원",
+      price: "팀원당 2000원",
       description: "메가커피 아이스 아메리카노 1개",
       icon: "/megacoffe.webp",
       iconClass: "megacoffeeIcon",
@@ -134,7 +134,7 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
     {
       id: "STANDARD",
       name: "Standard Room",
-      price: "팀원당 4840원",
+      price: "팀원당 4800원",
       description: "스타벅스 아이스 아메리카노 1개",
       icon: "/starbucks.png",
       iconClass: "starbucksIcon",
@@ -142,7 +142,7 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
     {
       id: "ELITE",
       name: "Elite Room",
-      price: "팀원당 8240원",
+      price: "팀원당 8200원",
       description: "스타벅스 아이스 아메리카노 1개 + 프렌치 크루아상",
       icon: "/starbucks.png",
       iconClass: "starbucksIcon",
@@ -155,7 +155,7 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
     if (increment) {
       setTeamCount((prev) => prev + 1);
     } else {
-      setTeamCount((prev) => Math.max(1, prev - 1));
+      setTeamCount((prev) => Math.max(2, prev - 1));
     }
   };
 
@@ -189,7 +189,7 @@ export default function CreateRoom({ onRoomCreated }: CreateRoomProps) {
     setRoomTitle("");
     setRoomSubTitle("");
     setSelectedRoom("");
-    setTeamCount(1);
+    setTeamCount(2);
     removeProfileImage();
     setInviteCode("");
   };

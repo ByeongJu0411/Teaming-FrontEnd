@@ -41,6 +41,10 @@ interface RoomData {
   members: Member[];
   avatarUrl: string;
   paymentStatus: "PAID" | "NOT_PAID";
+  ready: {
+    everyMemberEntered: boolean;
+    everyMemberPaid: boolean;
+  };
 }
 
 // 사용자 정보 API 응답 타입
@@ -318,7 +322,9 @@ export default function ActionBar({
           success: room.success || false,
           paymentStatus: room.paymentStatus || "NOT_PAID",
           roomTypeInfo: room.type || undefined,
-          lastMessageTime: room.lastMessage?.createdAt || new Date().toISOString(), // ✅ 정렬용
+          lastMessageTime: room.lastMessage?.createdAt || new Date().toISOString(),
+          // ✅ ready 정보 추가
+          ready: room.ready || { everyMemberEntered: false, everyMemberPaid: false },
         };
       });
 
