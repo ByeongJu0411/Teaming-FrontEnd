@@ -106,16 +106,44 @@ export default function GifticonSection() {
 
       // API 응답을 UI 형식으로 변환
       const transformedGifticons: Gifticon[] = data.map((item, index) => {
-        // grade에 따라 타입과 아이콘 결정
-        const isStarbucks = item.grade === "ELITE";
-        const type: "메가커피" | "스타벅스" = isStarbucks ? "스타벅스" : "메가커피";
-        const icon = isStarbucks ? "/starbucks.png" : "/megacoffe.webp";
+        // grade에 따라 타입, 이름, 설명, 아이콘 결정
+        let type: "메가커피" | "스타벅스";
+        let name: string;
+        let description: string;
+        let icon: string;
+
+        switch (item.grade) {
+          case "BASIC":
+            type = "메가커피";
+            name = "메가커피 쿠폰";
+            description = "메가커피 아메리카노 1개";
+            icon = "/megacoffe.webp";
+            break;
+          case "STANDARD":
+            type = "스타벅스";
+            name = "스타벅스 쿠폰";
+            description = "스타벅스 아이스 아메리카노 1개";
+            icon = "/starbucks.png";
+            break;
+          case "ELITE":
+            type = "스타벅스";
+            name = "스타벅스 쿠폰";
+            description = "스타벅스 아이스 아메리카노 1개, 프렌치 크루아상 1개";
+            icon = "/starbucks.png";
+            break;
+          default:
+            // 기본값 (혹시 모를 경우를 대비)
+            type = "메가커피";
+            name = "메가커피 쿠폰";
+            description = "메가커피 아메리카노 1개";
+            icon = "/megacoffe.webp";
+        }
 
         return {
           id: `${item.code}-${index}`,
           type: type,
-          name: isStarbucks ? "프리미엄 음료 쿠폰" : "아이스 아메리카노",
-          description: isStarbucks ? "스타벅스 프리미엄 음료 1개" : "메가커피 아이스 아메리카노 1개",
+          name: name,
+          description: description,
           receivedDate: new Date().toLocaleDateString("ko-KR").replace(/\. /g, ".").slice(0, -1),
           isUsed: false,
           expiryDate: item.expirationDate,

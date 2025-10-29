@@ -80,7 +80,11 @@ interface ChatRoomProps {
     role?: "LEADER" | "MEMBER";
     roomImageUrl?: string;
     paymentStatus?: "NOT_PAID" | "PAID";
-    success?: boolean; // success 필드 추가
+    success?: boolean;
+    ready?: {
+      everyMemberEntered: boolean;
+      everyMemberPaid: boolean;
+    };
   };
   onRoomUpdate?: (roomId: string, unreadCount: number) => void;
   onRefreshRoom?: () => void;
@@ -160,6 +164,7 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
     roomSuccess: roomData.success,
     isSuccessCompleted: isSuccessCompleted,
     role: roomData.role,
+    ready: roomData.ready,
   });
 
   const convertWSMessageToDisplay = useCallback((wsMsg: WSChatMessage): ChatMessageType => {
@@ -716,6 +721,21 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
     scrollToBottom();
   }, [displayMessages.length, scrollToBottom]);
 
+  // ✅ 팀플 성공 버튼 표시 조건: 팀장이면서 everyMemberEntered와 everyMemberPaid가 모두 true
+  const canShowSuccessButton =
+    !isSuccessCompleted &&
+    isLeader &&
+    roomData.ready?.everyMemberEntered === true &&
+    roomData.ready?.everyMemberPaid === true;
+
+  console.log("팀플 성공 버튼 표시 조건:", {
+    isSuccessCompleted,
+    isLeader,
+    everyMemberEntered: roomData.ready?.everyMemberEntered,
+    everyMemberPaid: roomData.ready?.everyMemberPaid,
+    canShowSuccessButton,
+  });
+
   if (!session) {
     return (
       <div className={styles.container}>
@@ -931,8 +951,8 @@ export default function ChatRoom({ roomData, onRoomUpdate, onRefreshRoom }: Chat
             </div>
           </div>
 
-          {/* 팀플 성공 버튼: 팀장이고 아직 성공하지 않은 경우에만 표시 */}
-          {!isSuccessCompleted && isLeader && (
+          {/* ✅ 팀플 성공 버튼: 팀장이고, 모든 멤버가 입장했고, 모든 멤버가 결제했고, 아직 성공하지 않은 경우에만 표시 */}
+          {canShowSuccessButton && (
             <div className={styles.successButton} onClick={handleSuccess}>
               <MdCelebration className={styles.successIcon} />
               팀플 성공
