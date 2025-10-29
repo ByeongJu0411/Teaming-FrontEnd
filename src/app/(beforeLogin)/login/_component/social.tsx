@@ -68,7 +68,7 @@ export default function SocialLoginButton() {
         {isLoading === "kakao" ? <div className={styles.loading_spinner} /> : <RiKakaoTalkFill />}
       </button>
 
-      {/* 구글 로그인 버튼 */}
+      {/* 구글 로그인 버튼 
       <button
         className={`${styles.social_button} ${styles.google_button}`}
         onClick={() => handleSocialLogin("google")}
@@ -76,6 +76,7 @@ export default function SocialLoginButton() {
       >
         {isLoading === "google" ? <div className={styles.loading_spinner} /> : <FaGoogle />}
       </button>
+      */}
 
       {/* 네이버 로그인 버튼 */}
       <button
@@ -86,7 +87,7 @@ export default function SocialLoginButton() {
         {isLoading === "naver" ? <div className={styles.loading_spinner} /> : <SiNaver />}
       </button>
 
-      {/* 애플 로그인 버튼 (미구현) */}
+      {/* 애플 로그인 버튼 (미구현)
       <button
         className={`${styles.social_button} ${styles.apple_button}`}
         onClick={() => alert("Apple 로그인은 준비 중입니다")}
@@ -94,6 +95,7 @@ export default function SocialLoginButton() {
       >
         <AiFillApple />
       </button>
+      */}
     </div>
   );
 }
