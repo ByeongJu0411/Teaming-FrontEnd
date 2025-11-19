@@ -79,6 +79,18 @@ const AssignmentRoom = ({ setModal, roomId, members }: ModalProps) => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [, setIsLoading] = useState(false);
 
+  // ✅ 세션 정보 디버깅
+  useEffect(() => {
+    if (session) {
+      console.log("=== 세션 정보 확인 ===");
+      console.log("userId:", session.userId);
+      console.log("user.id:", session.user?.id);
+      console.log("user.name:", session.user?.name);
+      console.log("accessToken 존재:", !!session.accessToken);
+      console.log("refreshToken 존재:", !!session.refreshToken);
+    }
+  }, [session]);
+
   // ActionBar에서 전달받은 avatarUrl 우선 사용 - 안전성 검사 추가
   const convertedMembers: Member[] = Array.isArray(members)
     ? members.map((member: RoomMember) => {
@@ -115,57 +127,53 @@ const AssignmentRoom = ({ setModal, roomId, members }: ModalProps) => {
     console.log("handleSubmitAssignment 호출됨 (SubmissionModal이 직접 처리)");
   };
 
+  // ✅ 수정된 canSubmit 함수
   const canSubmit = (assignment: Assignment) => {
-    const currentUserName = session?.user?.name;
-    const currentUserEmail = session?.user?.email;
+    console.log("=== canSubmit 검사 시작 ===");
 
-    console.log("canSubmit 검사:");
-    console.log("- 현재 사용자 이름:", currentUserName);
-    console.log("- 현재 사용자 이메일:", currentUserEmail);
-    console.log("- 방 멤버들:", members);
+    // ✅ 세션에서 직접 userId 가져오기 (가장 신뢰할 수 있는 소스)
+    const currentUserId = session?.userId?.toString();
 
-    let currentUserId = null;
-
-    // 안전한 멤버 찾기
-    if (Array.isArray(members) && members.length > 0) {
-      const currentMember = members.find(
-        (member) =>
-          member && (member.name === currentUserName || member.memberId.toString() === session?.user?.id?.toString())
-      );
-
-      if (currentMember) {
-        currentUserId = currentMember.memberId.toString();
-        console.log("- 찾은 현재 사용자 ID:", currentUserId);
-      } else {
-        console.log("- 현재 사용자를 방 멤버에서 찾을 수 없음");
-      }
-    }
-
-    console.log("- assignment.submissions:", assignment.submissions);
-    console.log("- assignment.assignedMembers:", assignment.assignedMembers);
+    console.log("- 현재 사용자 ID (세션):", currentUserId);
+    console.log("- 세션 정보:", {
+      userId: session?.userId,
+      userName: session?.user?.name,
+      userEmail: session?.user?.email,
+    });
 
     if (!currentUserId) {
-      console.log("- 현재 사용자 ID를 찾을 수 없음");
+      console.log("❌ 세션에서 현재 사용자 ID를 찾을 수 없음");
       return false;
     }
 
-    // 과제 할당 여부 확인
+    console.log("- assignment.assignedMembers:", assignment.assignedMembers);
+    console.log("- assignment.submissions:", assignment.submissions);
+
+    // ✅ 과제 할당 여부 확인
     const isAssigned = Array.isArray(assignment.assignedMembers) && assignment.assignedMembers.includes(currentUserId);
     console.log("- 현재 사용자가 과제에 할당됨:", isAssigned);
 
     if (!isAssigned) {
-      console.log("- 현재 사용자가 이 과제에 할당되지 않음");
+      console.log("❌ 현재 사용자가 이 과제에 할당되지 않음");
       return false;
     }
 
-    // 제출 상태 확인
+    // ✅ 제출 상태 확인
     const mySubmission = Array.isArray(assignment.submissions)
       ? assignment.submissions.find((s) => s && s.memberId === currentUserId)
       : null;
     console.log("- 내 제출 정보:", mySubmission);
 
-    const canSubmitResult = mySubmission?.status === "대기";
+    if (!mySubmission) {
+      console.log("❌ 사용자의 제출 정보를 찾을 수 없음");
+      return false;
+    }
+
+    // ✅ 제출 가능 여부 확인
+    const canSubmitResult = mySubmission.status === "대기" && !assignment.isCancelled;
     console.log("- 제출 가능 여부:", canSubmitResult);
+    console.log("  - 제출 상태:", mySubmission.status);
+    console.log("  - 과제 취소 여부:", assignment.isCancelled);
 
     return canSubmitResult;
   };
@@ -186,7 +194,10 @@ const AssignmentRoom = ({ setModal, roomId, members }: ModalProps) => {
   };
 
   const handleSubmitClick = () => {
-    console.log("과제 제출 모달 열기");
+    console.log("=== 과제 제출 버튼 클릭 ===");
+    console.log("현재 사용자 ID:", session?.userId);
+    console.log("선택된 과제:", selectedAssignment?.id);
+    console.log("할당된 멤버:", selectedAssignment?.assignedMembers);
     setShowSubmissionModal(true);
   };
 
